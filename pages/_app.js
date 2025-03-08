@@ -66,7 +66,7 @@ function App({ Component, pageProps }) {
   return (
     <Provider store={store}>
       <Head>
-        <title>Best Friends</title>
+        <title>OA extractor</title>
       </Head>
       
       <div className="min-h-screen bg-gray-100 flex flex-col lg:flex-row">
