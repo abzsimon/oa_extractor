@@ -5,7 +5,7 @@ const AuthorCard = ({ author }) => {
     <div className="bg-white shadow-md rounded-lg p-3 border border-gray-200 text-sm">
       {/* Author Name with OpenAlex & ORCID Bubbles */}
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-medium text-gray-800">{author.name || "Unknown Author"}</h2>
+        <h2 className="text-sm font-bold text-gray-800">{author.name || "Unknown Author"}</h2>
         <div className="flex gap-1">
           {/* OpenAlex Bubble (Warm Coral) */}
           <a
