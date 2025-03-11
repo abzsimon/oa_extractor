@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { setSelectedArticleId } from '../reducers/user';
 import { useEffect, useState } from 'react';
 import AuthorCard from '../components/AuthorCard';
+import ArticleCard from '../components/ArticleCard';
 import ArticleSearch from '../components/ArticleSearch';
 
 export default function Home() {
@@ -13,6 +14,13 @@ export default function Home() {
   const [authors, setAuthors] = useState([]);
   const [jsonData, setJsonData] = useState(null);
   const [extractedData, setExtractedData] = useState({});
+
+  // Add useEffect to trigger data fetching when searchQuery changes
+  useEffect(() => {
+    if (searchQuery) {
+      fetchData();
+    }
+  }, [searchQuery]);
 
   const fetchData = async () => {
     if (!searchQuery.trim()) return;
@@ -30,14 +38,19 @@ export default function Home() {
       setJsonData(data);
 
       let articleDetails = {
-        id : data.id.slice(-11),
+        id: data.id.slice(-11),
+        doi:data.doi,
+        pubyear:data.publication_year,
+        publisher: data.primary_location.display_name,
+        type: data.type,
+        oa_status:data.open_access.is_oa,
         title: data.display_name || "Untitled Article",
-        domains: [...new Set(data.topics?.map(topic => topic.domain?.display_name) || [])],
-        fields: [...new Set(data.topics?.map(topic => topic.field?.display_name) || [])],
-        subfields: [...new Set(data.topics?.map(topic => topic.subfield?.display_name) || [])]
+        domains: [...new Set(data.topics?.map(topic => topic.domain?.display_name).filter(Boolean) || [])],
+        fields: [...new Set(data.topics?.map(topic => topic.field?.display_name).filter(Boolean) || [])],
+        subfields: [...new Set(data.topics?.map(topic => topic.subfield?.display_name).filter(Boolean) || [])]
       };
 
-      setArticleInfo({...articleDetails});
+      setArticleInfo(articleDetails);
       setExtractedData(prevState => ({ ...prevState, ...articleDetails }));
 
       let authorsList = data.authorships.map((author) => ({
@@ -123,43 +136,8 @@ export default function Home() {
             </div>
           </div>
 
-          {/* 📌 Article Section */}
-          {articleInfo && (
-            <div className="bg-white shadow-md rounded-lg p-6 mb-8 border border-gray-200">
-              <h2 className="text-xl font-bold text-gray-900">{articleInfo.title}</h2>
-
-              {/* Domains, Fields, Subfields (Left Aligned) */}
-              <div className="mt-4 space-y-3">
-                {/* Domains */}
-                {articleInfo.domains?.length > 0 && (
-                  <div className="flex items-center">
-                    <span className="font-semibold text-[#E57373] w-24">Domains:</span>
-                    <div className="flex flex-wrap gap-2">
-                      {articleInfo.domains.map((domain, index) => (
-                        <span key={index} className="bg-[#A3D8F4] text-[#1E4D6B] text-xs font-medium px-3 py-2 rounded-md">
-                          {domain}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Fields */}
-                {articleInfo.fields?.length > 0 && (
-                  <div className="flex items-center">
-                    <span className="font-semibold text-[#E57373] w-24">Fields:</span>
-                    <div className="flex flex-wrap gap-2">
-                      {articleInfo.fields.map((field, index) => (
-                        <span key={index} className="bg-[#FFD1C1] text-[#8B3E3E] text-xs font-medium px-3 py-2 rounded-md">
-                          {field}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
+          {/* 📌 Article Card */}
+          {articleInfo && <ArticleCard article={articleInfo} />}
 
           {/* 📌 Authors Section */}
           <h1 className="text-2xl font-bold text-gray-900 mt-12 mb-6">Authors</h1>
