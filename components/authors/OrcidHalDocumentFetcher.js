@@ -1,6 +1,10 @@
 import { useDispatch, useSelector } from "react-redux";
 import { useState, useEffect } from "react";
-import PlotlyTreemaps from "./treemap";
+// Use dynamic imports for Plotly-based components
+import dynamic from "next/dynamic";
+
+// This ensures the PlotlyTreemaps component is *not* SSR'd (which causes the `self is not defined` error).
+const PlotlyTreemapsNoSSR = dynamic(() => import("./treemap"), { ssr: false });
 
 export default function OrcidHalDocumentFetcher() {
   const dispatch = useDispatch();
@@ -23,9 +27,7 @@ export default function OrcidHalDocumentFetcher() {
     const orcidId = cleanOrcid(selectedOrcid);
 
     try {
-      // 1) We'll do two separate requests:
-      //    (a) docType distribution (group query)
-      //    (b) all documents via pagination
+      // (a) docType distribution (group query)
       const groupApiUrl = `https://api.archives-ouvertes.fr/search/?wt=json&q=authORCIDIdExt_s:%22${orcidId}%22&fl=docType_s&group=true&group.field=docType_s`;
       const groupResponse = await fetch(groupApiUrl);
       if (!groupResponse.ok) {
@@ -39,7 +41,7 @@ export default function OrcidHalDocumentFetcher() {
         docTypeDistribution[group.groupValue] = group.doclist.numFound;
       });
 
-      // 2) Pagination to fetch ALL documents
+      // (b) Pagination to fetch ALL documents
       let allDocs = [];
       let start = 0;
       const rows = 30;
@@ -61,49 +63,49 @@ export default function OrcidHalDocumentFetcher() {
         start += rows;
 
         if (docsPage.length === 0) {
-          // No more docs returned, break out
+          // No more docs returned
           break;
         }
       }
 
-      // 3) We now have all documents in allDocs
       console.log("🔍 Number of docs fetched:", allDocs.length);
 
       // 4) Fractional domain counting
       let totalPublications = 0;
       const categoryCounts = {};
-      const itemRegex = /^([^.]+)\.(.*)$/; // capture everything up to the first dot
+      const itemRegex = /^([^.]+)\.(.*)$/; // up to first dot => category
 
       for (const doc of allDocs) {
-        // domainAllCode_s is presumably an array of strings like ["shs.hisphilso", "shs.hist", "info.info-ir"]
         const domainArray = Array.isArray(doc.domainAllCode_s)
           ? doc.domainAllCode_s
           : [];
 
-        // 4a) Gather the unique main domains in a set
+        // Collect unique main domains
         const uniqueCategories = new Set();
         for (const item of domainArray) {
           const match = item.match(itemRegex);
           if (match) {
-            const category = match[1]; // everything before the first dot
+            const category = match[1];
             uniqueCategories.add(category);
           }
         }
 
-        // 4b) Each doc counts as "1" split across all unique categories
-        const n = uniqueCategories.size; // how many distinct main domains
+        const n = uniqueCategories.size;
         if (n > 0) {
+          // distribute 1 doc among its unique domains
           const fraction = 1 / n;
           for (const cat of uniqueCategories) {
             categoryCounts[cat] = (categoryCounts[cat] || 0) + fraction;
           }
+        } else {
+          // no domains => domainless
+          categoryCounts["domainless"] =
+            (categoryCounts["domainless"] || 0) + 1;
         }
 
-        // We still count this doc as 1 doc in total
         totalPublications++;
       }
 
-      // Convert categoryCounts to an array if you want to display it that way
       const domainStats = Object.entries(categoryCounts).map(
         ([category, count]) => ({
           category,
@@ -111,16 +113,28 @@ export default function OrcidHalDocumentFetcher() {
         })
       );
 
-      console.log(
-        "Category Counts (fractional):",
-        JSON.stringify(categoryCounts, null, 2)
+      const sumOfCounts = domainStats.reduce(
+        (acc, { count }) => acc + count,
+        0
       );
+
+      // 2) Add a percentage field for each domain
+      const domainStatsWithPercent = domainStats.map((entry) => {
+        const percentage =
+          sumOfCounts === 0 ? 0 : (entry.count / sumOfCounts) * 100;
+        return {
+          ...entry,
+          percentage: parseFloat(percentage.toFixed(2)), // round to 2 decimals (or remove if you prefer)
+        };
+      });
+
+      console.log("Category Counts (fractional):", categoryCounts);
       console.log("Total Publications:", totalPublications);
 
-      // 5) Store results in state
+      // Store results in state
       setDocuments({
         total: totalPublications,
-        domains: domainStats,
+        domains: domainStatsWithPercent,
         docTypes: docTypeDistribution,
       });
     } catch (error) {
@@ -145,10 +159,12 @@ export default function OrcidHalDocumentFetcher() {
         <div className="mt-4">
           <p>Total Publications: {documents.total}</p>
           <p>Document Types: {JSON.stringify(documents.docTypes)}</p>
-          <p>Domains (Fractional Counts): {JSON.stringify(documents.domains)}</p>
+          <p>
+            Domains (Fractional Counts): {JSON.stringify(documents.domains)}
+          </p>
 
-          {/* Render the Plotly Treemaps */}
-          <PlotlyTreemaps documents={documents} />
+          {/* IMPORTANT: We now render the NO-SSR dynamic import */}
+          <PlotlyTreemapsNoSSR documents={documents} />
         </div>
       ) : (
         <p>No documents found.</p>
