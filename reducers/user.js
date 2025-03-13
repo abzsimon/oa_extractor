@@ -1,20 +1,20 @@
 import { createSlice } from '@reduxjs/toolkit';
 
-const initialState = {
-  value: {
-    selectedArticleId : "W2741809807",
-  }, // Keeps the existing array if needed
-};
-
 export const userSlice = createSlice({
   name: 'user',
-  initialState,
+  initialState: {
+    selectedArticleId: "",
+    selectedOrcid: null,  // Store the selected ORCID ID
+  },
   reducers: {
     setSelectedArticleId: (state, action) => {
-      state.selectedArticleId = action.payload; // Store selected article ID
+      state.selectedArticleId = action.payload;
+    },
+    setSelectedOrcid: (state, action) => {
+      state.selectedOrcid = action.payload;
     },
   },
 });
 
-export const { setSelectedArticleId } = userSlice.actions;
+export const { setSelectedArticleId, setSelectedOrcid } = userSlice.actions;
 export default userSlice.reducer;

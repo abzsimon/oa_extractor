@@ -1,0 +1,32 @@
+.header {
+	height: 8vh;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	border-bottom: 1px lightgray solid;
+	padding: 20px;
+}
+
+.logo {
+	font-weight: 600;
+	font-size: 26px;
+	letter-spacing: 2px;
+}
+
+.link {
+	cursor: pointer;
+	text-transform: uppercase;
+	letter-spacing: 1px;
+	font-size: 14px;
+}
+
+.link:hover {
+	font-weight: 600;
+}
+
+.linkContainer {
+	width: 25vw;
+	display: flex;
+	justify-content: space-around;
+	align-items: center;
+}

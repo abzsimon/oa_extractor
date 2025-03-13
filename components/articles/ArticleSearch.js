@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useDispatch } from "react-redux";
-import { setSelectedArticleId } from "../reducers/user"; // Import action
+import { setSelectedArticleId } from "../../reducers/user"; // Import action
 
 export default function ArticleSearch() {
   const dispatch = useDispatch();

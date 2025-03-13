@@ -16,9 +16,12 @@
     "@tailwindcss/cli": "^4.0.12",
     "@textea/json-viewer": "^4.0.1",
     "next": "12.1.6",
+    "plotly.js": "^3.0.1",
     "react": "18.1.0",
     "react-dom": "18.1.0",
-    "react-redux": "^9.2.0"
+    "react-plotly.js": "^2.6.0",
+    "react-redux": "^9.2.0",
+    "recharts": "^2.15.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.0.12",
