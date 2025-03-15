@@ -66,11 +66,11 @@ export default function HalAuthorDisambiguation() {
   };
 
   return (
-    <div className="p-2 w-full">
+    <div className="p-4 w-full">
       <div className="flex items-center justify-between mb-4">
         <div className="relative h-10 w-10">
           <Image
-            src="https://hal.science/assets/img/hal-logo-header.png"
+            src="https://openalex.org/img/openalex-logo-icon-black-and-white.ea51cede.png"
             alt="OpenAlex Logo"
             layout="fill"
             objectFit="contain"

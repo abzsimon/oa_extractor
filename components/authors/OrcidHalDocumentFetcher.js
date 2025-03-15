@@ -1,3 +1,4 @@
+import React from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useState, useEffect } from "react";
 // Use dynamic imports for Plotly-based components
@@ -6,10 +7,31 @@ import dynamic from "next/dynamic";
 // This ensures the PlotlyTreemaps component is *not* SSR'd (which causes the `self is not defined` error).
 const PlotlyTreemapsNoSSR = dynamic(() => import("./treemap"), { ssr: false });
 
+// Helper function to decide which query field to use
+const getQueryParameters = (identifier) => {
+  // Convert identifier to string to avoid type errors.
+  const idStr = String(identifier || "");
+  // If identifier includes 'orcid.org' or contains a dash, we assume it's an ORCID.
+  if (idStr.includes("orcid.org") || idStr.includes("-")) {
+    const cleaned = idStr.includes("orcid.org")
+      ? idStr.replace("https://orcid.org/", "")
+      : idStr;
+    return { field: "authORCIDIdExt_s", value: cleaned };
+  }
+  // If identifier is purely numeric, we assume it's a HAL ID.
+  else if (/^\d+$/.test(idStr)) {
+    return { field: "authIdPerson_i", value: idStr };
+  }
+  // Otherwise, assume it's a full name.
+  else {
+    return { field: "authFullName_s", value: idStr };
+  }
+};
+
 export default function OrcidHalDocumentFetcher() {
   const dispatch = useDispatch();
   const selectedOrcid = useSelector((state) => state.user.selectedOrcid);
-  const [documents, setDocuments] = useState([]);
+  const [documents, setDocuments] = useState({});
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -18,17 +40,16 @@ export default function OrcidHalDocumentFetcher() {
     }
   }, [selectedOrcid]);
 
-  const cleanOrcid = (orcid) => orcid.replace("https://orcid.org/", "");
-
   const fetchDocuments = async () => {
     if (!selectedOrcid) return;
     setLoading(true);
 
-    const orcidId = cleanOrcid(selectedOrcid);
+    // Determine which field to query based on the identifier.
+    const { field, value } = getQueryParameters(selectedOrcid);
 
     try {
       // (a) docType distribution (group query)
-      const groupApiUrl = `https://api.archives-ouvertes.fr/search/?wt=json&q=authORCIDIdExt_s:%22${orcidId}%22&fl=docType_s&group=true&group.field=docType_s`;
+      const groupApiUrl = `https://api.archives-ouvertes.fr/search?q=${field}:%22${value}%22&fl=docType_s&group=true&group.field=docType_s`;
       const groupResponse = await fetch(groupApiUrl);
       if (!groupResponse.ok) {
         console.error("Group API error:", groupResponse.status);
@@ -48,7 +69,7 @@ export default function OrcidHalDocumentFetcher() {
       let numFound = Infinity;
 
       while (start < numFound) {
-        const apiUrl = `https://api.archives-ouvertes.fr/search/?wt=json&q=authORCIDIdExt_s:%22${orcidId}%22&fl=docid,domainAllCode_s,docType_s&start=${start}&rows=${rows}`;
+        const apiUrl = `https://api.archives-ouvertes.fr/search?q=${field}:%22${value}%22&fl=docid,domainAllCode_s,docType_s&start=${start}&rows=${rows}`;
         const response = await fetch(apiUrl);
         if (!response.ok) {
           console.error("API error:", response.status);
@@ -70,7 +91,7 @@ export default function OrcidHalDocumentFetcher() {
 
       console.log("🔍 Number of docs fetched:", allDocs.length);
 
-      // 4) Fractional domain counting
+      // (c) Fractional domain counting
       let totalPublications = 0;
       const categoryCounts = {};
       const itemRegex = /^([^.]+)\.(.*)$/; // up to first dot => category
@@ -118,13 +139,13 @@ export default function OrcidHalDocumentFetcher() {
         0
       );
 
-      // 2) Add a percentage field for each domain
+      // Add a percentage field for each domain
       const domainStatsWithPercent = domainStats.map((entry) => {
         const percentage =
           sumOfCounts === 0 ? 0 : (entry.count / sumOfCounts) * 100;
         return {
           ...entry,
-          percentage: parseFloat(percentage.toFixed(2)), // round to 2 decimals (or remove if you prefer)
+          percentage: parseFloat(percentage.toFixed(2)),
         };
       });
 
@@ -145,29 +166,47 @@ export default function OrcidHalDocumentFetcher() {
   };
 
   return (
-    <div className="p-4 w-full">
+    <div className="p-2 w-full">
       <h1 className="text-xl font-bold text-gray-900 mb-3">Documents</h1>
-      <button
+      {/* <button
         onClick={fetchDocuments}
         className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition duration-200"
         disabled={!selectedOrcid || loading}
       >
         {loading ? "Loading..." : "Fetch Documents"}
-      </button>
+      </button> */}
 
       {documents.total > 0 ? (
-        <div className="mt-4">
-          <p>Total Publications: {documents.total}</p>
-          <p>Document Types: {JSON.stringify(documents.docTypes)}</p>
-          <p>
-            Domains (Fractional Counts): {JSON.stringify(documents.domains)}
-          </p>
-
-          {/* IMPORTANT: We now render the NO-SSR dynamic import */}
-          <PlotlyTreemapsNoSSR documents={documents} />
+        <div className="text-sm text-gray-700">
+          <div>
+            <span className="font-bold text-gray-500">Total</span>{" "}
+            {documents.total}
+          </div>
+          <div>
+            {Object.entries(documents.docTypes).map(
+              ([type, count], index, arr) => (
+                <React.Fragment key={type}>
+                  <span className="font-bold text-gray-500">{type}</span> {count}
+                  {index < arr.length - 1 && ", "}
+                </React.Fragment>
+              )
+            )}
+          </div>
+          <div>
+            {documents.domains.map((d, index) => (
+              <React.Fragment key={d.category}>
+                <span className="font-bold text-gray-500">{d.category}</span>{" "}
+                {d.count.toFixed(2)} ({d.percentage}%)
+                {index < documents.domains.length - 1 && ", "}
+              </React.Fragment>
+            ))}
+          </div>
+          <div>
+            <PlotlyTreemapsNoSSR documents={documents} />
+          </div>
         </div>
       ) : (
-        <p>No documents found.</p>
+        <p className="text-sm text-gray-700">No documents found.</p>
       )}
     </div>
   );
