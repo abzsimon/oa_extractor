@@ -8,7 +8,9 @@ function Menu() {
       <div className={styles.linkContainer}>
         <Link href="/"><span className={styles.link}>Home</span></Link>
         <Link href="/Authors"><span className={styles.link}>Authors</span></Link>
-        <Link className={styles.link} href="/Article"><span className={styles.link}>Articles</span></Link>
+        <Link href="/Article"><span className={styles.link}>Articles</span></Link>
+        <Link href="/Database"><span className={styles.link}>Database</span></Link>
+        <Link href="/Graph"><span className={styles.link}>Graph</span></Link>
       </div>
     </div>
   );

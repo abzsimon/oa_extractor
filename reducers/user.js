@@ -5,6 +5,7 @@ export const userSlice = createSlice({
   initialState: {
     selectedArticleId: "",
     selectedOrcid: null,  // Store the selected ORCID ID
+    OaWorksQuery: null,
   },
   reducers: {
     setSelectedArticleId: (state, action) => {
@@ -13,8 +14,11 @@ export const userSlice = createSlice({
     setSelectedOrcid: (state, action) => {
       state.selectedOrcid = action.payload;
     },
+    setOaWorksQuery: (state, action) => {
+      state.OaWorksQuery = action.payload;
+    },
   },
 });
 
-export const { setSelectedArticleId, setSelectedOrcid } = userSlice.actions;
+export const { setSelectedArticleId, setSelectedOrcid, setOaWorksQuery } = userSlice.actions;
 export default userSlice.reducer;

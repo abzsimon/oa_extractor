@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { useState, useEffect } from "react";
 // Use dynamic imports for Plotly-based components
 import dynamic from "next/dynamic";
+import DocumentDisplay from "./documentJson";
 
 // This ensures the PlotlyTreemaps component is *not* SSR'd (which causes the `self is not defined` error).
 const PlotlyTreemapsNoSSR = dynamic(() => import("./treemap"), { ssr: false });
@@ -177,31 +178,14 @@ export default function OrcidHalDocumentFetcher() {
       </button> */}
 
       {documents.total > 0 ? (
-        <div className="text-sm text-gray-700">
-          <div>
-            <span className="font-bold text-gray-500">Total</span>{" "}
-            {documents.total}
+        <div className="flex flex-col md:flex-row gap-2">
+          {/* Left pane: Document JSON Display (3/10) */}
+          <div className="w-full md:w-[30%] overflow-hidden">
+            <DocumentDisplay documents={documents} />
           </div>
-          <div>
-            {Object.entries(documents.docTypes).map(
-              ([type, count], index, arr) => (
-                <React.Fragment key={type}>
-                  <span className="font-bold text-gray-500">{type}</span> {count}
-                  {index < arr.length - 1 && ", "}
-                </React.Fragment>
-              )
-            )}
-          </div>
-          <div>
-            {documents.domains.map((d, index) => (
-              <React.Fragment key={d.category}>
-                <span className="font-bold text-gray-500">{d.category}</span>{" "}
-                {d.count.toFixed(2)} ({d.percentage}%)
-                {index < documents.domains.length - 1 && ", "}
-              </React.Fragment>
-            ))}
-          </div>
-          <div>
+
+          {/* Right pane: Treemap (7/10) */}
+          <div className="w-full md:w-[70%] flex-1 overflow-hidden">
             <PlotlyTreemapsNoSSR documents={documents} />
           </div>
         </div>
