@@ -38,15 +38,16 @@ export default function ArticlePage() {
       const data = await response.json();
       setJsonData(data);
 
-      // ensuite on l'écrème pour les besoins du projet en extrayant uniquement les champs qui nous intéressent pour l'afficher en bas à gauche : "extracted Data"
+      // ensuite on l'écrème pour les besoins du projet en extrayant uniquement les champs qui nous intéressent pour l'afficher en bas à gauche : "extracted Data". je conforme le nom des clés aux file formatting instructions de Syrf 
       let articleDetails = {
         id: data.id.slice(-11),
         doi:data.doi,
         pubyear:data.publication_year,
-        publisher: data.primary_location.display_name,
+        publishedIn: data.primary_location?.source?.display_name,
         type: data.type,
         oa_status:data.open_access.is_oa,
         title: data.display_name || "Untitled Article",
+        topics: [...new Set(data.topics?.map(topic => topic.display_name).filter(Boolean) || [])],
         domains: [...new Set(data.topics?.map(topic => topic.domain?.display_name).filter(Boolean) || [])],
         fields: [...new Set(data.topics?.map(topic => topic.field?.display_name).filter(Boolean) || [])],
         subfields: [...new Set(data.topics?.map(topic => topic.subfield?.display_name).filter(Boolean) || [])]
@@ -69,6 +70,7 @@ export default function ArticlePage() {
 
       setAuthors(authorsList);
       setExtractedData(prevState => ({ ...prevState, authorsList }));
+
     } catch (error) {
       console.error("Fetch error:", error);
     }

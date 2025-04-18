@@ -4,7 +4,7 @@ export const userSlice = createSlice({
   name: 'user',
   initialState: {
     selectedArticleId: "",
-    selectedOrcid: null,  // Store the selected ORCID ID
+    selectedOrcid: null, 
     OaWorksQuery: null,
   },
   reducers: {
