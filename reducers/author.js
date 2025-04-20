@@ -7,6 +7,8 @@ const initialState = {
   display_name: '',
   cited_by_count: 0,
   works_count: 0,
+  institutions : [],
+  countries : [],
   overall_works: [],
   doctypes: [],
   study_works: [],
@@ -14,6 +16,8 @@ const initialState = {
   top_five_fields: [],
   top_two_domains: [],
   topic_tree: {},
+  db_topic_tree:{},
+  isInDb : false,
     // champs saisis manuellement
   gender: '',     
   status: '',     

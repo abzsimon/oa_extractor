@@ -2,7 +2,7 @@ import Head from 'next/head';
 import { useDispatch, useSelector } from 'react-redux';
 import { setSelectedArticleId } from '../../reducers/user';
 import { useEffect, useState } from 'react';
-import AuthorCard from '../../components/articles/AuthorCard';
+import AuthorCard from '../../components/authors/AuthorCard';
 import ArticleCard from '../../components/articles/ArticleCard';
 import ArticleSearch from '../../components/articles/ArticleSearch';
 
