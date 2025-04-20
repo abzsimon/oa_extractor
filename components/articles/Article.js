@@ -1,14 +1,25 @@
-import Head from 'next/head';
-import { useDispatch, useSelector } from 'react-redux';
-import { setSelectedArticleId } from '../../reducers/user';
-import { useEffect, useState } from 'react';
-import AuthorCard from '../../components/authors/AuthorCard';
-import ArticleCard from '../../components/articles/ArticleCard';
-import ArticleSearch from '../../components/articles/ArticleSearch';
+import Head from "next/head";
+import { useDispatch, useSelector } from "react-redux";
+import { setSelectedArticleId } from "../../reducers/user";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/router";
+import AuthorCard from "../../components/authors/AuthorCard";
+import ArticleCard from "../../components/articles/ArticleCard";
+import ArticleSearch from "../../components/articles/ArticleSearch";
 
 export default function ArticlePage() {
   const dispatch = useDispatch();
-  const searchQuery = useSelector((state) => state.user.selectedArticleId) || "";
+
+  const router = useRouter();
+
+  const handleAuthorClick = (oaId) => {
+    if (oaId && oaId.startsWith("https://openalex.org/")) {
+      oaId = oaId.split("/").pop(); // get "A123456789"
+    }
+    router.push(`/authors?oa_id=${oaId}`);
+  };
+  const searchQuery =
+    useSelector((state) => state.user.selectedArticleId) || "";
 
   const [articleInfo, setArticleInfo] = useState(null);
   const [authors, setAuthors] = useState([]);
@@ -38,39 +49,63 @@ export default function ArticlePage() {
       const data = await response.json();
       setJsonData(data);
 
-      // ensuite on l'écrème pour les besoins du projet en extrayant uniquement les champs qui nous intéressent pour l'afficher en bas à gauche : "extracted Data". je conforme le nom des clés aux file formatting instructions de Syrf 
+      // ensuite on l'écrème pour les besoins du projet en extrayant uniquement les champs qui nous intéressent pour l'afficher en bas à gauche : "extracted Data". je conforme le nom des clés aux file formatting instructions de Syrf
       let articleDetails = {
         id: data.id.slice(-11),
-        doi:data.doi,
-        pubyear:data.publication_year,
+        doi: data.doi,
+        pubyear: data.publication_year,
         publishedIn: data.primary_location?.source?.display_name,
         type: data.type,
-        oa_status:data.open_access.is_oa,
+        oa_status: data.open_access.is_oa,
         title: data.display_name || "Untitled Article",
-        topics: [...new Set(data.topics?.map(topic => topic.display_name).filter(Boolean) || [])],
-        domains: [...new Set(data.topics?.map(topic => topic.domain?.display_name).filter(Boolean) || [])],
-        fields: [...new Set(data.topics?.map(topic => topic.field?.display_name).filter(Boolean) || [])],
-        subfields: [...new Set(data.topics?.map(topic => topic.subfield?.display_name).filter(Boolean) || [])]
+        topics: [
+          ...new Set(
+            data.topics?.map((topic) => topic.display_name).filter(Boolean) ||
+              []
+          ),
+        ],
+        domains: [
+          ...new Set(
+            data.topics
+              ?.map((topic) => topic.domain?.display_name)
+              .filter(Boolean) || []
+          ),
+        ],
+        fields: [
+          ...new Set(
+            data.topics
+              ?.map((topic) => topic.field?.display_name)
+              .filter(Boolean) || []
+          ),
+        ],
+        subfields: [
+          ...new Set(
+            data.topics
+              ?.map((topic) => topic.subfield?.display_name)
+              .filter(Boolean) || []
+          ),
+        ],
       };
 
       setArticleInfo(articleDetails);
-      setExtractedData(prevState => ({ ...prevState, ...articleDetails }));
+      setExtractedData((prevState) => ({ ...prevState, ...articleDetails }));
 
       let authorsList = data.authorships.map((author) => ({
         name: author.author?.display_name || "Unknown Author",
         oaId: author.author?.id || "N/A",
         orcId: author.author?.orcid || "N/A",
-        institutions: [...new Set(author.institutions?.map(inst =>
-          inst.display_name.length > 30
-            ? inst.display_name.slice(0, 30) + "..."
-            : inst.display_name
-        ) || [])],
+        institutions: [
+          ...new Set(
+            (author.institutions || [])
+              .map((inst) => inst.display_name)
+              .filter(Boolean)
+          ),
+        ],
         countries: author.countries ? [...new Set(author.countries)] : [],
       }));
 
       setAuthors(authorsList);
-      setExtractedData(prevState => ({ ...prevState, authorsList }));
-
+      setExtractedData((prevState) => ({ ...prevState, authorsList }));
     } catch (error) {
       console.error("Fetch error:", error);
     }
@@ -86,7 +121,9 @@ export default function ArticlePage() {
         {/* Left Pane - JSON Viewer & Extracted Data */}
         <div className="lg:w-1/3 w-full p-4 bg-white shadow-md border-r border-gray-300 overflow-auto flex flex-col">
           {/* JSON Viewer (Top Left) */}
-          <h2 className="text-lg font-bold text-gray-900 mb-3">Raw JSON Data</h2>
+          <h2 className="text-lg font-bold text-gray-900 mb-3">
+            Raw JSON Data
+          </h2>
           <div className="bg-gray-200 p-3 rounded-md max-h-[40vh] overflow-auto flex-grow">
             {jsonData ? (
               <pre className="text-xs text-gray-800 whitespace-pre-wrap">
@@ -101,7 +138,9 @@ export default function ArticlePage() {
           <div className="border-t border-gray-400 my-4"></div>
 
           {/* Extracted Data (Bottom Left) */}
-          <h2 className="text-lg font-bold text-gray-900 mb-3">Extracted Data</h2>
+          <h2 className="text-lg font-bold text-gray-900 mb-3">
+            Extracted Data
+          </h2>
           <div className="bg-gray-200 p-3 rounded-md max-h-[40vh] overflow-auto">
             {extractedData && Object.keys(extractedData).length > 0 ? (
               <pre className="text-xs text-gray-800 whitespace-pre-wrap">
@@ -144,11 +183,19 @@ export default function ArticlePage() {
           {articleInfo && <ArticleCard article={articleInfo} />}
 
           {/* 📌 Authors Section */}
-          <h1 className="text-2xl font-bold text-gray-900 mt-12 mb-6">Authors</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mt-12 mb-6">
+            Authors
+          </h1>
           {authors.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
               {authors.map((author, index) => (
-                <AuthorCard key={index} author={author} />
+                <div
+                key={index}
+                onClick={() => handleAuthorClick(author.oaId)}
+                className="cursor-pointer"
+              >
+                <AuthorCard author={author} />
+              </div>
               ))}
             </div>
           ) : (

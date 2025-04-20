@@ -1,12 +1,8 @@
 import { useSelector, useDispatch } from "react-redux";
-import { useEffect } from "react";
 import TopicTreeExpandable from "./TopicTreeExpandable";
-import {
-  setAuthor,
-  clearAuthor,
-  updateAuthorField,
-} from "../../reducers/author";
+import { updateAuthorField } from "../../reducers/author";
 import AuthorActions from "./AuthorActions";
+import DbStatusPill from "./DbStatusPill";
 
 export default function AuthorViewer() {
   const author = useSelector((state) => state.author);
@@ -32,16 +28,7 @@ export default function AuthorViewer() {
         <div className="space-y-1">
           <p className="flex items-center gap-3">
             <strong>Nom</strong> {author.display_name}
-            <span
-              title={
-                author.isInDb
-                  ? "Présent dans la base locale"
-                  : "Non encore sauvegardé"
-              }
-              className="flex items-center gap-1 px-2 py-0.5 rounded-md text-xs border border-red-200 bg-gray-100 text-gray-600"
-            >
-              💾 {author.isInDb ? "in DB" : "not in DB"}
-            </span>
+            <DbStatusPill oaId={author.oa_id} />
           </p>
           <p>
             <strong>OA ID</strong> {author.oa_id}

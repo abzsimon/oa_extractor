@@ -133,26 +133,33 @@ export function getTopFiveFields(topicTree = {}) {
     }));
 }
 
-export function normalizeAuthor(author) {
-  const topicTree =
-    author.topic_tree || (author.topics ? buildTopicTree(author.topics) : null);
+export function normalizeAuthor(author, source = "db") {
+  if (!author) return {};
 
-  const top_two_domains = topicTree ? getTopTwoDomains(topicTree) : [];
-  const top_five_topics =
-    author.top_five_topics || (author.topics || []).slice(0, 5);
+  const isAutocomplete = source === "autocomplete";
+  const isReducer = source === "reducer";
+  const isOpenAlex = source === "openalex";
+  const isDb = source === "db";
+
+  const topicTree =
+    isReducer ? author.topic_tree :
+    isOpenAlex && author.topics ? buildTopicTree(author.topics) :
+    {};
 
   return {
-    name: author.name || author.display_name || "Unknown Author",
-    oaId:
-      author.oaId || (author.oa_id && `https://openalex.org/${author.oa_id}`),
-    orcId:
-      author.orcId ||
-      (author.orcid_id && `https://orcid.org/${author.orcid_id}`),
+    name: author.display_name || author.name || "Unknown Author",
+    oaId: author.oa_id || author.oaId || author.id || "",
+    orcId: author.orcid || author.orcId || author.external_id || "",
     institutions: author.institutions || [],
     countries: author.countries || [],
-    top_two_domains,
-    top_five_topics,
+    top_two_domains: author.top_two_domains || getTopTwoDomains(topicTree),
+    top_five_topics:
+      author.top_five_topics ||
+      (author.topics || []).slice(0, 5).map((t) => t.display_name || t),
     gender: author.gender || "",
     isInDb: author.isInDb || false,
+    works_count: author.works_count || 0,
+    cited_by_count: author.cited_by_count || 0,
+    source,
   };
 }
