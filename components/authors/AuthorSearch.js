@@ -65,8 +65,9 @@ export default function AuthorSearch({ onAuthorSelected, oa_id }) {
 
     try {
       // Check local DB first
-      const dbRes = await fetch(`http://localhost:3000/authors/${oa_id}`);
+      const dbRes = await fetch(`https://oa-extractor-backend.vercel.app/authors/${oa_id}`);
       if (dbRes.ok) {
+        console.log("vercel backend reached")
         const dbAuthor = await dbRes.json();
         const structured = {
           ...dbAuthor,
