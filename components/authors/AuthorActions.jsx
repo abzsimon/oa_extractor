@@ -6,7 +6,7 @@ import { convertTopicTreeForMongoose, convertTopicTreeForReducer } from "./Autho
 const AuthorActions = () => {
   const author = useSelector((state) => state.author);
   const dispatch = useDispatch();
-  const apiUrl = "http://localhost:3000/authors";
+  const apiUrl = "https://oa-extractor-backend.vercel.app/authors";
   const { oa_id } = author;
   const [shouldCheckDb, setShouldCheckDb] = useState(false);
 

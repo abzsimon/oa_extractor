@@ -10,7 +10,7 @@ const DbStatusPill = ({ oaId }) => {
     const checkDb = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`http://localhost:3000/authors/${oaId}`);
+        const res = await fetch(`https://oa-extractor-backend.vercel.app/authors/${oaId}`);
         setIsInDb(res.ok);
       } catch (err) {
         console.error("Error checking DB status:", err);

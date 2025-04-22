@@ -8,7 +8,7 @@ export default function DatabaseAuthors() {
   useEffect(() => {
     const loadAuthors = async () => {
       try {
-        const res = await fetch("http://localhost:3000/authors");
+        const res = await fetch("https://oa-extractor-backend.vercel.app/authors");
         const json = await res.json();
         setAuthors(json.data || []);
       } catch (err) {
