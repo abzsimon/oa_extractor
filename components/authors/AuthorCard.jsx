@@ -1,8 +1,21 @@
 import React, { useState } from "react";
 import { normalizeAuthor } from "./Authors.utils";
 import DbStatusPill from "./DbStatusPill";
+import { useRouter } from "next/router";
 
-const AuthorCard = ({ author }) => {
+const statusLabels = {
+  A: "Directeur.ice de recherche ou professeur.e des universités",
+  B: "Chargé.e de recherche ou maître.sse de conférence",
+  C: "Post-doctorant.e, doctorant.e ou ingénieur.e de recherche",
+  D: "Cabinet privé",
+  E: "Administrateur.ice ou ingénieur.e d'infrastructure",
+  F: "Responsable politique, institutionnel.le",
+  G: "Autre",
+  H: "Non renseigné",
+};
+
+const AuthorCard = ({ author, source = "default" }) => {
+  const router = useRouter();
   const {
     name,
     oaId,
@@ -12,139 +25,169 @@ const AuthorCard = ({ author }) => {
     top_two_domains,
     top_five_topics,
     gender,
+    status,
     works_count,
   } = normalizeAuthor(author);
 
   const [showModal, setShowModal] = useState(false);
 
+  const g = gender || "unknown";
+  const s = status || "H";
+
+  const genderColor = {
+    male: "bg-pink-100 text-pink-700",
+    female: "bg-blue-100 text-blue-700",
+    nonbinary: "bg-purple-100 text-purple-700",
+    unknown: "bg-gray-100 text-gray-600",
+  };
+
+  const handleClick = () => {
+    if (oaId) {
+      const id = oaId.split("/").pop();
+      router.push(`/Authors?oa_id=${id}`);
+    }
+  };
+
   return (
-    <div className="relative bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow duration-200 text-sm">
-      {/* 💾 DB status pill */}
-      <div className="flex items-center justify-between mb-2 gap-2">
-        <DbStatusPill oaId={oaId} />
+    <div
+      onClick={handleClick}
+      className="h-full bg-white border border-gray-200 rounded-lg p-2 shadow-sm hover:shadow-md transition text-sm flex flex-col cursor-pointer"
+    >
+      {/* TOP ROW: DB + IDs */}
+      <div className="flex items-center justify-between">
+        {source !== "db" && <DbStatusPill oaId={oaId} />}
+        <div className="flex flex-wrap gap-1">
+          {oaId && (
+            <a
+              href={oaId}
+              onClick={(e) => e.stopPropagation()}
+              target="_blank"
+              className="bg-red-100 text-red-800 text-xs px-2 py-0.5 rounded"
+              rel="noopener noreferrer"
+            >
+              OpenAlex
+            </a>
+          )}
+          {orcId && (
+            <a
+              href={`${orcId}`}
+              onClick={(e) => e.stopPropagation()}
+              target="_blank"
+              className="bg-green-100 text-green-800 text-xs px-2 py-0.5 rounded"
+              rel="noopener noreferrer"
+            >
+              ORCID
+            </a>
+          )}
+        </div>
       </div>
 
-      {/* Name & IDs */}
-      <h3 className="text-base font-semibold text-gray-800">{name}</h3>
+      {/* NAME + STATUS */}
+      <div className="flex items-center gap-2 mt-1.5">
+        <h3 className="text-sm font-semibold text-gray-800">{name}</h3>
+        <span
+          title={statusLabels[s]}
+          className="text-xs font-medium bg-yellow-50 text-yellow-800 px-2 py-0.5 rounded-full"
+        >
+          {s}
+        </span>
+      </div>
 
+      {/* PUBS */}
       {works_count > 0 && (
-        <div className="mt-1 text-[13px] text-gray-600">
+        <div className="text-xs text-gray-600 mt-1.5">
           📚 {works_count} publication{works_count > 1 ? "s" : ""}
         </div>
       )}
 
-      <div className="mt-2 flex flex-wrap gap-2">
-        {oaId && (
-          <a
-            href={oaId}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="bg-red-100 text-red-800 text-xs px-2 py-0.5 rounded"
-          >
-            OpenAlex
-          </a>
-        )}
-        {orcId && (
-          <a
-            href={`https://orcid.org/${orcId}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="bg-green-100 text-green-800 text-xs px-2 py-0.5 rounded"
-          >
-            ORCID
-          </a>
-        )}
-      </div>
-
-      {/* Institutions */}
+      {/* INSTITUTIONS */}
       {institutions.length > 0 && (
-        <div className="mt-3 flex items-start">
-          <span className="w-20 font-medium text-gray-500">Institutions:</span>
+        <div className="flex items-start text-xs mt-1.5">
+          <span className="w-20 text-gray-500">Inst.:</span>
           <div className="flex-1 flex flex-wrap gap-1">
-            {institutions.slice(0, 2).map((inst, i) => (
-              <span
-                key={i}
-                className="bg-gray-100 text-gray-700 px-2 py-0.5 rounded text-xs border border-gray-200"
-              >
-                {inst}
-              </span>
-            ))}
-            {institutions.length > 2 && (
+            <span className="bg-gray-100 text-gray-700 px-2 py-0.5 rounded border border-gray-200">
+              {institutions[0]}
+            </span>
+            {institutions.length > 1 && (
               <button
-                onClick={() => setShowModal(true)}
-                className="text-xs text-blue-600 underline hover:text-blue-800"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowModal(true);
+                }}
+                className="text-blue-600 underline"
               >
-                + {institutions.length - 2} more
+                +{institutions.length - 1}
               </button>
             )}
           </div>
         </div>
       )}
 
-      {/* Countries */}
+      {/* COUNTRIES */}
       {countries.length > 0 && (
-        <div className="mt-2 flex items-start">
-          <span className="w-20 font-medium text-gray-500">Countries:</span>
+        <div className="flex items-start text-xs mt-1.5">
+          <span className="w-20 text-gray-500">Countries:</span>
           <span className="text-gray-700">{countries.join(", ")}</span>
         </div>
       )}
 
-      {/* Gender */}
-      {gender && (
-        <div className="mt-2 flex items-start">
-          <span className="w-20 font-medium text-gray-500">Gender:</span>
-          <span className="text-gray-700">{gender}</span>
-        </div>
-      )}
+      {/* GENDER */}
+      <div className="flex items-start text-xs mt-1.5">
+        <span className="w-20 text-gray-500">Gender:</span>
+        <span
+          className={`px-2 py-0.5 rounded-full font-medium ${genderColor[g]}`}
+        >
+          {g === "unknown" ? "Non renseigné" : g}
+        </span>
+      </div>
 
-      {/* Top Domains */}
+      {/* DOMAINS */}
       {top_two_domains.length > 0 && (
-        <div className="mt-4">
-          <h4 className="text-xs uppercase tracking-wider font-semibold text-gray-500 mb-1.5">
-            Top Domains
-          </h4>
-          <div className="flex flex-wrap gap-1">
-            {top_two_domains.map((domain, idx) => (
-              <div
-                key={idx}
-                className="inline-flex items-center bg-blue-50 text-blue-700 px-2 py-1 rounded text-xs"
+        <div className="mt-1.5">
+          <h4 className="text-xs font-semibold text-gray-500">Domains</h4>
+          <div className="flex flex-wrap gap-1 mt-0.5">
+            {top_two_domains.map((d, i) => (
+              <span
+                key={i}
+                className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-xs"
               >
-                {domain.name}
-                <span className="ml-1 bg-blue-100 text-blue-800 px-1.5 rounded-full text-xs">
-                  {domain.percentage}%
+                {d.name}
+                <span className="ml-1 bg-blue-100 text-blue-800 px-1 rounded-full">
+                  {d.percentage}%
                 </span>
-              </div>
+              </span>
             ))}
           </div>
         </div>
       )}
 
-      {/* Top Topics */}
+      {/* TOPICS */}
       {top_five_topics.length > 0 && (
-        <div className="mt-3">
-          <h4 className="text-xs uppercase tracking-wider font-semibold text-gray-500 mb-1.5">
-            Top Topics
-          </h4>
-          <div className="flex flex-wrap gap-1">
-            {top_five_topics.map((topic, idx) => {
-              const topicName = topic.display_name || topic;
-              return (
-                <span
-                  key={idx}
-                  className="bg-gray-100 text-gray-700 px-2 py-0.5 rounded text-xs"
-                >
-                  {topicName}
-                </span>
-              );
-            })}
+        <div className="mt-1.5">
+          <h4 className="text-xs font-semibold text-gray-500">Topics</h4>
+          <div className="flex flex-wrap gap-1 mt-0.5">
+            {top_five_topics.slice(0, 3).map((t, i) => (
+              <span
+                key={i}
+                className="bg-gray-100 text-gray-700 px-2 py-0.5 rounded text-xs"
+              >
+                {t.display_name || t}
+              </span>
+            ))}
           </div>
         </div>
       )}
 
-      {/* Modal for full institutions list */}
+      {/* MODAL */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-          <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div
+            className="bg-white rounded-lg shadow-lg w-full max-w-md p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h2 className="text-lg font-semibold text-gray-800 mb-4">
               All Institutions
             </h2>
@@ -157,10 +200,13 @@ const AuthorCard = ({ author }) => {
             </ul>
             <div className="mt-6 flex justify-end">
               <button
-                onClick={() => setShowModal(false)}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded hover:bg-blue-700 transition"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowModal(false);
+                }}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded hover:bg-blue-700"
               >
-                Close
+                Fermer
               </button>
             </div>
           </div>

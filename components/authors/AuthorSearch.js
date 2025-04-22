@@ -1,7 +1,8 @@
 import Image from "next/image";
 import { useDispatch } from "react-redux";
-import { useState, useEffect } from "react";
-import { setAuthor } from "../../reducers/author";
+import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/router";
+import { clearAuthor, setAuthor } from "../../reducers/author";
 import {
   buildTopicTree,
   convertTopicTreeForReducer,
@@ -12,14 +13,23 @@ import AuthorCard from "./AuthorCard";
 
 export default function AuthorSearch({ onAuthorSelected, oa_id }) {
   const dispatch = useDispatch();
+  const router = useRouter();
   const [disambiguationQuery, setDisambiguationQuery] = useState("");
   const [authors, setAuthors] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedAuthor, setSelectedAuthor] = useState(null);
 
+  const alreadyLoaded = useRef(false); // ✅ éviter double chargement
+
+  // 🔄 Si on arrive avec un ?oa_id=... depuis un autre écran
   useEffect(() => {
-    if (oa_id) {
-      handleSelectAuthor({ oa_id }); // 👈 Trigger fetch logic if prop is passed
+    if (oa_id && !alreadyLoaded.current) {
+      alreadyLoaded.current = true;
+      dispatch(clearAuthor());
+      handleSelectAuthor({ oa_id });
+
+      // Nettoyer l'URL après chargement
+      router.replace("/Authors", undefined, { shallow: true });
     }
   }, [oa_id]);
 
@@ -31,10 +41,8 @@ export default function AuthorSearch({ onAuthorSelected, oa_id }) {
       const res = await fetch(
         `https://api.openalex.org/autocomplete/authors?q=${disambiguationQuery}`
       );
-      if (!res.ok) throw new Error("Failed to fetch authors");
-
       const data = await res.json();
-      const parsed = data.results.map((a) => ({
+      const parsed = (data.results || []).map((a) => ({
         oa_id: a.id.match(/A\d+/)?.[0] || "",
         orcid_id:
           a.external_id?.match(/\d{4}-\d{4}-\d{4}-\d{4}/)?.[0] || "",
@@ -56,7 +64,7 @@ export default function AuthorSearch({ onAuthorSelected, oa_id }) {
     setSelectedAuthor(author);
 
     try {
-      // First: check local DB
+      // Check local DB first
       const dbRes = await fetch(`http://localhost:3000/authors/${oa_id}`);
       if (dbRes.ok) {
         const dbAuthor = await dbRes.json();
@@ -77,11 +85,12 @@ export default function AuthorSearch({ onAuthorSelected, oa_id }) {
       const typesRes = await fetch(`${data.works_api_url}&group_by=type`);
       const typesData = await typesRes.json();
       const doctypes = (typesData.group_by || [])
-      .filter((d) => d.count > 0)
-      .map((d) => ({
-        name: d.key_display_name,
-        quantity: d.count,
-      }));
+        .filter((d) => d.count > 0)
+        .map((d) => ({
+          name: d.key_display_name,
+          quantity: d.count,
+        }));
+
       const topic_tree = buildTopicTree(data.topics || []);
       const top_two_domains = getTopTwoDomains(topic_tree);
       const top_five_fields = getTopFiveFields(topic_tree);
@@ -159,12 +168,10 @@ export default function AuthorSearch({ onAuthorSelected, oa_id }) {
           </div>
         </div>
 
-        {/* Search Status */}
         {isLoading && (
           <p className="text-blue-600 text-center">Searching for authors...</p>
         )}
 
-        {/* Results */}
         {authors.length > 0 && (
           <div className="bg-white p-6 rounded-lg shadow-md">
             <h2 className="text-lg font-bold text-gray-900 mb-4 border-b pb-2">
@@ -172,37 +179,35 @@ export default function AuthorSearch({ onAuthorSelected, oa_id }) {
             </h2>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-              {authors.map((author, index) => {
-                return (
-                  <div
-                    key={index}
-                    onClick={() => handleSelectAuthor(author)}
-                    className={`relative cursor-pointer ${
-                      selectedAuthor?.oa_id === author.oa_id
-                        ? "opacity-60"
-                        : ""
-                    }`}
-                  >
-                    {selectedAuthor?.oa_id === author.oa_id && (
-                      <div className="absolute inset-0 bg-white bg-opacity-60 z-10 flex items-center justify-center rounded-lg">
-                        <p className="text-blue-600 font-medium animate-pulse">
-                          Loading...
-                        </p>
-                      </div>
-                    )}
+              {authors.map((author, index) => (
+                <div
+                  key={index}
+                  onClick={() => handleSelectAuthor(author)}
+                  className={`relative cursor-pointer ${
+                    selectedAuthor?.oa_id === author.oa_id
+                      ? "opacity-60"
+                      : ""
+                  }`}
+                >
+                  {selectedAuthor?.oa_id === author.oa_id && (
+                    <div className="absolute inset-0 bg-white bg-opacity-60 z-10 flex items-center justify-center rounded-lg">
+                      <p className="text-blue-600 font-medium animate-pulse">
+                        Loading...
+                      </p>
+                    </div>
+                  )}
 
-                    <AuthorCard
-                      author={{
-                        display_name: author.name,
-                        oa_id: author.oa_id,
-                        orcid: author.orcid_id,
-                        works_count: author.workCount,
-                      }}
-                      source="autocomplete"
-                    />
-                  </div>
-                );
-              })}
+                  <AuthorCard
+                    author={{
+                      display_name: author.name,
+                      oa_id: author.oa_id,
+                      orcid: author.orcid_id,
+                      works_count: author.workCount,
+                    }}
+                    source="autocomplete"
+                  />
+                </div>
+              ))}
             </div>
           </div>
         )}
@@ -210,4 +215,3 @@ export default function AuthorSearch({ onAuthorSelected, oa_id }) {
     </div>
   );
 }
-  

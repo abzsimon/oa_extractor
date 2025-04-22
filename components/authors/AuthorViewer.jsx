@@ -28,13 +28,16 @@ export default function AuthorViewer() {
         <div className="space-y-1">
           <p className="flex items-center gap-3">
             <strong>Nom</strong> {author.display_name}
-            <DbStatusPill oaId={author.oa_id} />
+            <DbStatusPill
+              key={author.oa_id + (author.isInDb ? "-in" : "-out")}
+              oaId={author.oa_id}
+            />
           </p>
           <p>
             <strong>OA ID</strong> {author.oa_id}
           </p>
           <p>
-            <strong>ORCID</strong> {author.orcid || "—"}
+            <strong>ORCID</strong> {author.orcid || undefined}
           </p>
           <p>
             <strong>Citations</strong> {author.cited_by_count}

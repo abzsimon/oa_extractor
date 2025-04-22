@@ -8,7 +8,7 @@ export default function ArticleSearch() {
   const [results, setResults] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const handleSubmit = async () => {
+  const handleSubmit = async () => {  
     if (searchedArticle.length > 3) {
       const apiUrl = `https://api.openalex.org/autocomplete/works?q=${searchedArticle}`;
 

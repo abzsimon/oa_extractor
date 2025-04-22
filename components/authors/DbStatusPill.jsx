@@ -2,12 +2,13 @@ import { useEffect, useState } from "react";
 
 const DbStatusPill = ({ oaId }) => {
   const [isInDb, setIsInDb] = useState(false);
-  const [checked, setChecked] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const checkDb = async () => {
-      if (!oaId) return;
+    if (!oaId) return;
 
+    const checkDb = async () => {
+      setLoading(true);
       try {
         const res = await fetch(`http://localhost:3000/authors/${oaId}`);
         setIsInDb(res.ok);
@@ -15,14 +16,14 @@ const DbStatusPill = ({ oaId }) => {
         console.error("Error checking DB status:", err);
         setIsInDb(false);
       } finally {
-        setChecked(true);
+        setLoading(false);
       }
     };
 
     checkDb();
-  }, [oaId]); // <--- Important: re-run if oaId changes (after creation)
+  }, [oaId]); // ← KEY POINT: will re-run if oaId changes!
 
-  if (!checked) {
+  if (loading) {
     return (
       <span className="text-xs text-gray-400 italic">checking DB…</span>
     );

@@ -1,7 +1,5 @@
-import Authors from '../components/authors/Authors'
+import Authors from '../components/authors/Authors';
 
-function AuthorsPage() {
+export default function AuthorsPage() {
   return <Authors />;
 }
-
-export default AuthorsPage;

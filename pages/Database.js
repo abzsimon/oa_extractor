@@ -1,7 +1,5 @@
-import Article from '../components/articles/Article'
+import Database from "../components/database/Database";
 
-function ArticlePage() {
-  return <Article />;
+export default function DatabasePage() {
+  return <Database />;
 }
-
-export default ArticlePage;
