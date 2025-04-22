@@ -16,7 +16,7 @@ function App({ Component, pageProps }) {
   return (
     <Provider store={store}>
       <Head>
-        <title>Next.js App</title>
+        <title>Review Pilot for OpenAlex</title>
       </Head>
       <Menu />
       <Component {...pageProps} />
