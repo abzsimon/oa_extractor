@@ -8,8 +8,9 @@ import ArticleSearch from "../../components/articles/ArticleSearch";
 import ArticleForm from "./ArticleForm";
 
 export default function ArticlePage() {
-  // C’est LUI le vrai identifiant fiable, venant du sélecteur
-  const selectedArticleId = useSelector((state) => state.user.selectedArticleId) || "";
+  // C'est LUI le vrai identifiant fiable, venant du sélecteur
+  const selectedArticleId =
+    useSelector((state) => state.user.selectedArticleId) || "";
   const dispatch = useDispatch();
   const [authors, setAuthors] = useState([]);
 
@@ -26,6 +27,14 @@ export default function ArticlePage() {
     return sortedKeys.map((key) => abstractIndex[key]).join(" ");
   };
 
+  // Helper function to extract ID from OpenAlex URL
+  const extractId = (url) => {
+    if (!url) return "";
+    // Extract ID pattern (W\d+ for works, A\d+ for authors) from a full OpenAlex URL
+    const match = url.match(/([WA]\d+)$/);
+    return match ? match[0] : url;
+  };
+
   // Core logic: toujours checker DB d'abord, puis OpenAlex sinon
   const fetchData = useCallback(async () => {
     const id = selectedArticleId;
@@ -37,13 +46,15 @@ export default function ArticlePage() {
 
     // 1. Chercher dans la base locale
     try {
-      const dbRes = await fetch(`https://oa-extractor-backend.vercel.app/articles/${id}`);
+      const dbRes = await fetch(
+        `https://oa-extractor-backend.vercel.app/articles/${id}`
+      );
       if (dbRes.ok) {
         const dbArticle = await dbRes.json();
         // On retransforme authors pour affichage sur la gauche
-        setAuthors(dbArticle.authors?.map(a => ({ name: a })) || []);
+        setAuthors(dbArticle.authors?.map((oaId) => ({ oaId })) || []);
         dispatch(setArticle({ ...dbArticle, isInDb: true }));
-        return; // STOP ! Pas besoin de chercher OpenAlex.
+        return; // STOP ! Pas besoin de chercher OpenAlex.
       }
     } catch (err) {
       // On tente OpenAlex en fallback
@@ -57,7 +68,7 @@ export default function ArticlePage() {
 
       const authorsList = data.authorships.map((author) => ({
         name: author.author?.display_name || "Unknown Author",
-        oaId: author.author?.id?.replace("https://openalex.org/", "") || "N/A",
+        oaId: extractId(author.author?.id) || "N/A",
         orcId: author.author?.orcid || "N/A",
         institutions: [
           ...new Set(
@@ -72,9 +83,9 @@ export default function ArticlePage() {
       setAuthors(authorsList);
 
       const articleDetails = {
-        id: data.id.replace("https://openalex.org/works/", ""),
+        id: extractId(data.id),
         title: data.display_name || "Untitled Article",
-        authors: authorsList.map((a) => a.name),
+        authors: authorsList.map((a) => a.oaId),
         publishedIn: data.primary_location?.source?.display_name || "",
         abstract: reconstructAbstract(data.abstract_inverted_index),
         url: data.primary_location?.landing_page_url || "",
@@ -90,7 +101,8 @@ export default function ArticlePage() {
         ],
         domains: [
           ...new Set(
-            data.topics?.map((t) => t.domain?.display_name).filter(Boolean) || []
+            data.topics?.map((t) => t.domain?.display_name).filter(Boolean) ||
+              []
           ),
         ],
         fields: [
@@ -100,10 +112,11 @@ export default function ArticlePage() {
         ],
         subfields: [
           ...new Set(
-            data.topics?.map((t) => t.subfield?.display_name).filter(Boolean) || []
+            data.topics?.map((t) => t.subfield?.display_name).filter(Boolean) ||
+              []
           ),
         ],
-        isInDb: false, // Indique à l’UI “propose l’enregistrement”
+        isInDb: false, // Indique à l'UI "propose l'enregistrement"
       };
 
       dispatch(setArticle(articleDetails));

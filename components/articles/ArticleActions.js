@@ -62,6 +62,7 @@ const ArticleActions = () => {
       return;
     }
     try {
+      console.log("Article envoyé en DB (POST/PUT):", article);
       const res = await fetch(`${apiUrl}/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },

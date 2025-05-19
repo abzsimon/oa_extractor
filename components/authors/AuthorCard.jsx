@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { normalizeAuthor } from "./Authors.utils";
 import DbStatusPill from "./DbStatusPill";
 import { useRouter } from "next/router";

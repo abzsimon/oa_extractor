@@ -30,11 +30,15 @@ export default function ArticleSearch() {
   };
 
   const handleSelect = (id) => {
-    const regex = /W\d+$/;
-    const match = id.match(regex);
-    const identifier = match ? match[0] : null;
-    dispatch(setSelectedArticleId(identifier)); // Store in Redux
-    setIsModalOpen(false); // Close modal
+    const match = id.match(/^W\d+$/) || id.match(/W\d+$/); // Accepte W123456, ou l’extrait depuis l’URL
+    if (!match) {
+      alert("Format d'identifiant OpenAlex invalide ! (ex : W123456)");
+      return;
+    }
+    const identifier = match[0];
+    console.log("handleSelect id (brut):", id, "identifier:", identifier);
+    dispatch(setSelectedArticleId(identifier));
+    setIsModalOpen(false);
     console.log("Selected ID stored in Redux:", identifier);
   };
 
