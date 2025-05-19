@@ -8,7 +8,7 @@ export default function ArticleSearch() {
   const [results, setResults] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const handleSubmit = async () => {  
+  const handleSubmit = async () => {
     if (searchedArticle.length > 3) {
       const apiUrl = `https://api.openalex.org/autocomplete/works?q=${searchedArticle}`;
 
@@ -30,10 +30,12 @@ export default function ArticleSearch() {
   };
 
   const handleSelect = (id) => {
-    const last11Chars = id.slice(-11); // Extract last 11 characters of ID
-    dispatch(setSelectedArticleId(last11Chars)); // Store in Redux
+    const regex = /W\d+$/;
+    const match = id.match(regex);
+    const identifier = match ? match[0] : null;
+    dispatch(setSelectedArticleId(identifier)); // Store in Redux
     setIsModalOpen(false); // Close modal
-    console.log("Selected ID stored in Redux:", last11Chars);
+    console.log("Selected ID stored in Redux:", identifier);
   };
 
   return (
@@ -58,7 +60,9 @@ export default function ArticleSearch() {
       {isModalOpen && (
         <div className="fixed top-0 left-0 w-full h-full bg-black bg-opacity-50 flex justify-center items-center">
           <div className="bg-white p-6 rounded-lg shadow-lg max-w-lg w-full">
-            <h3 className="text-xl font-bold text-gray-900 mb-4">Search Results</h3>
+            <h3 className="text-xl font-bold text-gray-900 mb-4">
+              Search Results
+            </h3>
             <ul className="max-h-64 overflow-auto">
               {results.length > 0 ? (
                 results.map((item) => (

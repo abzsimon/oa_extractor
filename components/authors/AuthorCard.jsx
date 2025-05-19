@@ -100,28 +100,31 @@ const AuthorCard = ({ author, source = "default" }) => {
         </div>
       )}
 
-      {/* INSTITUTIONS */}
-      {institutions.length > 0 && (
-        <div className="flex items-start text-xs mt-1.5">
-          <span className="w-20 text-gray-500">Inst.:</span>
-          <div className="flex-1 flex flex-wrap gap-1">
-            <span className="bg-gray-100 text-gray-700 px-2 py-0.5 rounded border border-gray-200">
-              {institutions[0]}
-            </span>
-            {institutions.length > 1 && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowModal(true);
-                }}
-                className="text-blue-600 underline"
-              >
-                +{institutions.length - 1}
-              </button>
-            )}
-          </div>
-        </div>
+{/* INSTITUTIONS */}
+{institutions.length > 0 && (
+  <div className="flex items-start text-xs mt-1.5">
+    <span className="w-20 text-gray-500 flex-shrink-0">Inst.:</span>
+
+    <div className="flex-1 flex gap-1 overflow-hidden">
+      <div className="bg-gray-100 text-gray-700 px-2 py-0.5 rounded border border-gray-200 truncate overflow-hidden whitespace-nowrap flex-1">
+        {institutions[0]}
+      </div>
+
+      {institutions.length > 1 && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowModal(true);
+          }}
+          className="text-blue-600 underline flex-shrink-0"
+        >
+          +{institutions.length - 1}
+        </button>
       )}
+    </div>
+  </div>
+)}
+
 
       {/* COUNTRIES */}
       {countries.length > 0 && (

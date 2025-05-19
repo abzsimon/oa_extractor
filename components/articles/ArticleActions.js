@@ -1,37 +1,29 @@
 import { useEffect, useState } from "react";
-import { useSelector, useDispatch } from "react-redux";
-import { clearAuthor, setAuthor } from "../../reducers/author";
-import { convertTopicTreeForMongoose, convertTopicTreeForReducer } from "./Authors.utils";
+import { useDispatch, useSelector } from "react-redux";
+import { setArticle, clearArticle } from "../../reducers/article";
 
-const AuthorActions = () => {
-  const author = useSelector((state) => state.author);
+const apiUrl = "https://oa-extractor-backend.vercel.app/articles";
+
+const ArticleActions = () => {
+  const article = useSelector((state) => state.article);
   const dispatch = useDispatch();
-  const apiUrl = "https://oa-extractor-backend.vercel.app/authors";
-  const { oa_id } = author;
+  const { id, isInDb } = article;
   const [shouldCheckDb, setShouldCheckDb] = useState(false);
 
-  const authorToSend = {
-    ...author,
-    topic_tree: convertTopicTreeForMongoose(author.topic_tree),
-  };
-
-  // 🔍 Re-check la DB lorsque nécessaire
+  // Vérifier si l'article existe en DB (pour activer/désactiver les boutons)
   useEffect(() => {
-    if (!oa_id || !shouldCheckDb) return;
-
-    const checkIfAuthorInDb = async () => {
+    if (!id || !shouldCheckDb) return;
+    const checkIfArticleInDb = async () => {
       try {
-        const res = await fetch(`${apiUrl}/${oa_id}`);
+        const res = await fetch(`${apiUrl}/${id}`);
         if (res.ok) {
-          const dbAuthor = await res.json();
-          dispatch(setAuthor({
-            ...dbAuthor,
-            topic_tree: convertTopicTreeForReducer(dbAuthor.topic_tree || []),
+          const dbArticle = await res.json();
+          dispatch(setArticle({
+            ...dbArticle,
             isInDb: true,
           }));
         } else {
-          // Pas trouvé => l'auteur n'est plus en base
-          dispatch(setAuthor({ ...author, isInDb: false }));
+          dispatch(setArticle({ ...article, isInDb: false }));
         }
       } catch (err) {
         console.error("Erreur lors du recheck de la DB :", err);
@@ -39,24 +31,23 @@ const AuthorActions = () => {
         setShouldCheckDb(false);
       }
     };
+    checkIfArticleInDb();
+    // eslint-disable-next-line
+  }, [shouldCheckDb, id]);
 
-    checkIfAuthorInDb();
-  }, [shouldCheckDb, oa_id, dispatch]);
-
+  // Création d'article
   const handleCreate = async () => {
     try {
       const res = await fetch(apiUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(authorToSend),
+        body: JSON.stringify(article),
       });
-
       const data = await res.json();
       if (!res.ok) {
         alert(`Erreur création : ${data.message}`);
       } else {
-        alert("Auteur créé avec succès 🆕");
-        console.log(data);
+        alert("Article créé avec succès 🆕");
         setShouldCheckDb(true);
       }
     } catch (err) {
@@ -64,25 +55,23 @@ const AuthorActions = () => {
     }
   };
 
+  // Mise à jour d'article
   const handleUpdate = async () => {
-    if (!oa_id) {
-      alert("oa_id requis pour la mise à jour !");
+    if (!id) {
+      alert("ID requis pour la mise à jour !");
       return;
     }
-
     try {
-      const res = await fetch(`${apiUrl}/${oa_id}`, {
+      const res = await fetch(`${apiUrl}/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(authorToSend),
+        body: JSON.stringify(article),
       });
-
       const data = await res.json();
       if (!res.ok) {
         alert(`Erreur mise à jour : ${data.message}`);
       } else {
-        alert("Auteur mis à jour ✅");
-        console.log(data);
+        alert("Article mis à jour ✅");
         setShouldCheckDb(true);
       }
     } catch (err) {
@@ -90,26 +79,21 @@ const AuthorActions = () => {
     }
   };
 
+  // Suppression d'article
   const handleDelete = async () => {
-    if (!oa_id) {
-      alert("oa_id requis pour la suppression !");
+    if (!id) {
+      alert("ID requis pour la suppression !");
       return;
     }
-
-    const confirmDelete = window.confirm(`Supprimer l'auteur ${oa_id} ?`);
-    if (!confirmDelete) return;
-
+    if (!window.confirm(`Supprimer l'article ${id} ?`)) return;
     try {
-      const res = await fetch(`${apiUrl}/${oa_id}`, {
-        method: "DELETE",
-      });
-
+      const res = await fetch(`${apiUrl}/${id}`, { method: "DELETE" });
       const data = await res.json();
       if (!res.ok) {
         alert(`Erreur suppression : ${data.message}`);
       } else {
-        alert("Auteur supprimé 🗑️");
-        dispatch(clearAuthor());
+        alert("Article supprimé 🗑️");
+        dispatch(clearArticle());
       }
     } catch (err) {
       alert("Erreur réseau lors de la suppression.");
@@ -120,27 +104,27 @@ const AuthorActions = () => {
     <div style={{ marginTop: "1rem", display: "flex", gap: "1rem" }}>
       <button
         onClick={handleCreate}
-        disabled={author.isInDb}
+        disabled={isInDb}
         className={`px-4 py-2 rounded text-white ${
-          author.isInDb
+          isInDb
             ? "bg-gray-300 cursor-not-allowed"
             : "bg-blue-600 hover:bg-blue-700"
         }`}
-        title={author.isInDb ? "Auteur déjà enregistré" : "Créer l'auteur"}
+        title={isInDb ? "Article déjà enregistré" : "Créer l'article"}
       >
         🆕 Créer
       </button>
       <button
         onClick={handleUpdate}
-        disabled={!author.isInDb}
+        disabled={!isInDb}
         className={`px-4 py-2 rounded text-white ${
-          !author.isInDb
+          !isInDb
             ? "bg-gray-300 cursor-not-allowed"
             : "bg-blue-600 hover:bg-blue-700"
         }`}
         title={
-          !author.isInDb
-            ? "Créér l'auteur avant de mettre à jour"
+          !isInDb
+            ? "Créer l'article avant de mettre à jour"
             : "Mettre à jour"
         }
       >
@@ -148,14 +132,14 @@ const AuthorActions = () => {
       </button>
       <button
         onClick={handleDelete}
-        disabled={!author.isInDb}
+        disabled={!isInDb}
         title={
-          !author.isInDb
-            ? "L'auteur ne peut pas être supprimé car il n'est pas en base"
-            : "Supprimer l'auteur"
+          !isInDb
+            ? "L'article ne peut pas être supprimé car il n'est pas en base"
+            : "Supprimer l'article"
         }
         className={`px-4 py-2 rounded text-white font-medium transition-colors duration-150 ${
-          !author.isInDb
+          !isInDb
             ? "bg-gray-300 text-gray-500 cursor-not-allowed"
             : "bg-red-600 hover:bg-red-700"
         }`}
@@ -166,4 +150,4 @@ const AuthorActions = () => {
   );
 };
 
-export default AuthorActions;
+export default ArticleActions;
