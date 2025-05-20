@@ -134,15 +134,16 @@ const AuthorCard = ({ author, source = "default" }) => {
         </div>
       )}
 
-      {/* GENDER */}
-      <div className="flex items-start text-xs mt-1.5">
-        <span className="w-20 text-gray-500">Gender:</span>
-        <span
-          className={`px-2 py-0.5 rounded-full font-medium ${genderColor[g]}`}
-        >
-          {g === "unknown" ? "Non renseigné" : g}
-        </span>
-      </div>
+      {/* GENDER
+<div className="flex items-start text-xs mt-1.5">
+  <span className="w-20 text-gray-500">Gender:</span>
+  <span
+    className={`px-2 py-0.5 rounded-full font-medium ${genderColor[g]} truncate max-w-[6ch]`}
+  >
+    {g === "unknown" ? "N/A" : g}
+  </span>
+</div> */}
+
 
       {/* DOMAINS */}
       {top_two_domains.length > 0 && (

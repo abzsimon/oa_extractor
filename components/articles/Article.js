@@ -8,13 +8,11 @@ import ArticleSearch from "../../components/articles/ArticleSearch";
 import ArticleForm from "./ArticleForm";
 
 export default function ArticlePage() {
-  // C'est LUI le vrai identifiant fiable, venant du sélecteur
   const selectedArticleId =
     useSelector((state) => state.user.selectedArticleId) || "";
   const dispatch = useDispatch();
   const [authors, setAuthors] = useState([]);
 
-  // Pour reconstruire un abstract OpenAlex
   const reconstructAbstract = (abstractInvertedIndex) => {
     if (!abstractInvertedIndex) return "";
     const abstractIndex = {};
@@ -27,15 +25,12 @@ export default function ArticlePage() {
     return sortedKeys.map((key) => abstractIndex[key]).join(" ");
   };
 
-  // Helper function to extract ID from OpenAlex URL
   const extractId = (url) => {
     if (!url) return "";
-    // Extract ID pattern (W\d+ for works, A\d+ for authors) from a full OpenAlex URL
     const match = url.match(/([WA]\d+)$/);
     return match ? match[0] : url;
   };
 
-  // Core logic: toujours checker DB d'abord, puis OpenAlex sinon
   const fetchData = useCallback(async () => {
     const id = selectedArticleId;
     if (!id) {
@@ -44,23 +39,18 @@ export default function ArticlePage() {
       return;
     }
 
-    // 1. Chercher dans la base locale
     try {
       const dbRes = await fetch(
         `https://oa-extractor-backend.vercel.app/articles/${id}`
       );
       if (dbRes.ok) {
         const dbArticle = await dbRes.json();
-        // On retransforme authors pour affichage sur la gauche
         setAuthors(dbArticle.authors?.map((oaId) => ({ oaId })) || []);
         dispatch(setArticle({ ...dbArticle, isInDb: true }));
-        return; // STOP ! Pas besoin de chercher OpenAlex.
+        return;
       }
-    } catch (err) {
-      // On tente OpenAlex en fallback
-    }
+    } catch {}
 
-    // 2. Sinon, requête OpenAlex
     try {
       const res = await fetch(`https://api.openalex.org/works/${id}`);
       if (!res.ok) throw new Error("Failed to fetch article");
@@ -86,7 +76,7 @@ export default function ArticlePage() {
         id: extractId(data.id),
         title: data.display_name || "Untitled Article",
         authors: authorsList.map((a) => a.oaId),
-        authorsFullNames: authorsList.map(a => a.name),
+        authorsFullNames: authorsList.map((a) => a.name),
         publishedIn: data.primary_location?.source?.display_name || "",
         abstract: reconstructAbstract(data.abstract_inverted_index),
         url: data.primary_location?.landing_page_url || "",
@@ -117,7 +107,7 @@ export default function ArticlePage() {
               []
           ),
         ],
-        isInDb: false, // Indique à l'UI "propose l'enregistrement"
+        isInDb: false,
       };
 
       dispatch(setArticle(articleDetails));
@@ -128,12 +118,10 @@ export default function ArticlePage() {
     }
   }, [selectedArticleId, dispatch]);
 
-  // Rafraîchit à chaque changement de sélection
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
-  // Données Redux actuelles (pour ArticleCard)
   const articleRedux = useSelector((state) => state.article);
 
   return (
@@ -141,47 +129,37 @@ export default function ArticlePage() {
       <Head>
         <title>OA Extractor</title>
       </Head>
-      <div className="min-h-screen bg-gray-100 flex flex-col lg:flex-row">
-        {/* Left Pane – Article Search */}
-        <div className="lg:w-2/5 w-full p-4 flex flex-col h-full">
-          {/* Search Bar */}
+      <div className="flex h-screen">
+        {/* Colonne de gauche 4/10 */}
+        <div className="w-2/5 p-4 flex flex-col">
+          {/* Barre de recherche */}
           <div className="flex flex-col lg:flex-row gap-4 mb-4">
             <div className="w-full">
               <ArticleSearch />
             </div>
           </div>
-          {/* Article Info */}
-          <div className="flex-1 overflow-auto mb-2">
+          {/* Article info scrollable */}
+          <div className="flex-1 overflow-auto mb-4 max-h-[50vh]">
             {articleRedux && articleRedux.id ? (
               <ArticleCard article={articleRedux} />
             ) : (
               <p className="text-gray-600">Aucun article sélectionné.</p>
             )}
           </div>
-          {/* Authors Section */}
-          <div className="flex justify-between items-center mb-4">
-            <h1 className="text-2xl font-bold text-gray-900">Authors ↓</h1>
-            <h2 className="text-xs text-gray-900 italic">
-              Click on author card to edit in author view
-            </h2>
-          </div>
-          {authors.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-2">
-              {authors.map((author, index) => (
-                <div key={index} className="cursor-pointer">
+          {/* Auteurs en bas */}
+          <div className="border-t pt-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-4">
+              {authors.map((author, idx) => (
+                <div key={idx} className="cursor-pointer">
                   <AuthorCard author={author} />
                 </div>
               ))}
             </div>
-          ) : (
-            <p className="text-gray-600">No authors found.</p>
-          )}
-        </div>
-        {/* Right Pane – Annotation */}
-        <div className="lg:w-3/5 w-full p-4 bg-white shadow-md border-r border-gray-300 overflow-auto flex flex-col">
-          <div className="flex-grow overflow-auto">
-            <ArticleForm />
           </div>
+        </div>
+        {/* Colonne de droite 6/10 */}
+        <div className="w-3/5 p-1 overflow-auto flex flex-col justify-start">
+          <ArticleForm />
         </div>
       </div>
     </>

@@ -1,17 +1,29 @@
-const ArticleCard = ({ article }) => {
-  const abstract = article?.abstract;
+export default function ArticleCard({ article }) {
   if (!article) return null;
 
+  const renderRow = (label, values) =>
+    values?.length > 0 ? (
+      <tr>
+        <td className="pr-2 align-top text-[10px] font-medium text-gray-500 whitespace-nowrap">
+          {label}
+        </td>
+        <td className="text-[10px] text-gray-800">
+          {values.join(", ")}
+        </td>
+      </tr>
+    ) : null;
+
   return (
-    <div className="bg-white shadow-md rounded-lg p-4 border border-gray-200 min-h-[75vh] flex flex-col">
-      {/* Article Info */}
-      <div className="space-y-4">
-        {/* Header */}
-        <div>
-          <h1 className="text-xl font-bold text-gray-800">
+    <div className="p-2 flex flex-col gap-2 overflow-auto">
+      {/* Top section: categories left, title/meta right */}
+      <div className="flex flex-row gap-4">
+
+        {/* Title & Meta */}
+        <div className="flex-1">
+          <h1 className="text-m font-semibold text-gray-800 leading-tight">
             {article.title || "Untitled Article"}
           </h1>
-          <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+          <div className="text-xs text-gray-600 mt-1 flex flex-wrap gap-2">
             {article.doi ? (
               <a
                 href={article.doi}
@@ -22,99 +34,37 @@ const ArticleCard = ({ article }) => {
                 {article.doi}
               </a>
             ) : (
-              <span className="italic text-gray-500">No DOI</span>
+              <span className="italic text-gray-400">No DOI</span>
             )}
-            <span className="bg-gray-100 px-2 py-0.5 rounded-md">
-              {article.pubyear || "Year unknown"}
-            </span>
-            <span className="bg-gray-100 px-2 py-0.5 rounded-md">
-              {article.referenceType || "Type unspecified"}
-            </span>
-            <span
-              className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                article.oa_status
-                  ? "bg-green-100 text-green-800"
-                  : "bg-amber-100 text-amber-800"
-              }`}
-            >
-              {article.oa_status ? "Open" : "Closed"}
+            <span>{article.pubyear || "?"}</span>
+            <span>{article.referenceType || "Type ?"}</span>
+            <span className={article.oa_status ? "text-green-700" : "text-red-700"}>
+              {article.oa_status ? "Open Access" : "Closed"}
             </span>
           </div>
         </div>
         {/* Categories */}
-        <div className="text-sm space-y-2">
-          {article.domains?.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              <span className="font-medium">Domains:</span>
-              {article.domains.map((d, i) => (
-                <span
-                  key={i}
-                  className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded"
-                >
-                  {d}
-                </span>
-              ))}
-            </div>
-          )}
-          {article.fields?.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              <span className="font-medium">Fields:</span>
-              {article.fields.map((f, i) => (
-                <span
-                  key={i}
-                  className="bg-purple-50 text-purple-700 px-2 py-0.5 rounded"
-                >
-                  {f}
-                </span>
-              ))}
-            </div>
-          )}
-          {article.subfields?.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              <span className="font-medium">Subfields:</span>
-              {article.subfields.map((s, i) => (
-                <span
-                  key={i}
-                  className="bg-teal-50 text-teal-700 px-2 py-0.5 rounded"
-                >
-                  {s}
-                </span>
-              ))}
-            </div>
-          )}
-          {article.topics?.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              <span className="font-medium">Topics:</span>
-              {article.topics.map((t, i) => (
-                <span
-                  key={i}
-                  className="bg-orange-50 text-orange-700 px-2 py-0.5 rounded"
-                >
-                  {t}
-                </span>
-              ))}
-            </div>
-          )}
+        <div className="w-1/3">
+          <table className="w-full text-left border-collapse">
+            <tbody>
+              {renderRow("Domains", article.domains)}
+              {renderRow("Fields", article.fields)}
+              {renderRow("Subfields", article.subfields)}
+              {renderRow("Topics", article.topics)}
+            </tbody>
+          </table>
         </div>
       </div>
 
       {/* Abstract */}
-      <div className="mt-6 flex flex-col flex-1">
-        <label
-          htmlFor={`abstract-${article.id}`}
-          className="block text-sm font-medium text-gray-700 mb-2"
-        >
-          Abstract
-        </label>
-        <textarea
-          id={`abstract-${article.id}`}
-          readOnly
-          className="w-full flex-1 text-sm border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 overflow-auto"
-          value={abstract}
-        />
-      </div>
+      {article?.abstract && (
+        <div>
+          <label className="text-xs font-medium text-gray-600">Résumé</label>
+          <p className="text-sm text-gray-800 whitespace-pre-line mt-1">
+            {article.abstract}
+          </p>
+        </div>
+      )}
     </div>
   );
-};
-
-export default ArticleCard;
+}
