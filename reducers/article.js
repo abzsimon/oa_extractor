@@ -5,6 +5,7 @@ const initialState = {
   id: "",
   title: "",
   authors: [],
+  authorsFullNames : [],
   abstract: "No Abstract",
   publishedIn: "None",
   url: "None",

@@ -3,6 +3,7 @@ import TopicTreeExpandable from "./TopicTreeExpandable";
 import { updateAuthorField } from "../../reducers/author";
 import AuthorActions from "./AuthorActions";
 import DbStatusPill from "./DbStatusPill";
+import AuthorWorksBrowser from "./AuthorWorksCarousel"
 
 export default function AuthorViewer() {
   const author = useSelector((state) => state.author);
@@ -189,17 +190,11 @@ export default function AuthorViewer() {
           />
         </div>
       </div>
+      {/* CRUD */}
+      <AuthorActions />
 
       {/* 🔢 Works IDs */}
-      {/* <div>
-        <h4 className="font-semibold">
-          Publications ({author.overall_works.length})
-        </h4>
-        <div className="max-h-24 overflow-auto text-xs bg-gray-50 p-2 border border-gray-200 rounded">
-          {author.overall_works.join(", ")}
-        </div>
-      </div> */}
-      <AuthorActions />
+      <AuthorWorksBrowser authorId={author.oa_id}/>
     </div>
   );
 }

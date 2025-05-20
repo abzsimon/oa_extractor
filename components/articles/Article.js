@@ -86,6 +86,7 @@ export default function ArticlePage() {
         id: extractId(data.id),
         title: data.display_name || "Untitled Article",
         authors: authorsList.map((a) => a.oaId),
+        authorsFullNames: authorsList.map(a => a.name),
         publishedIn: data.primary_location?.source?.display_name || "",
         abstract: reconstructAbstract(data.abstract_inverted_index),
         url: data.primary_location?.landing_page_url || "",
