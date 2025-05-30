@@ -154,25 +154,39 @@ export default function ArticleForm() {
                   Article disponible en accès ouvert
                 </label>
                 <div className="border rounded p-2 flex gap-4">
-                  {["Oui", "Non"].map((opt) => (
-                    <label key={opt} className="flex items-center gap-1">
-                      <input
-                        type="radio"
-                        name="openAccess"
-                        value={opt}
-                        checked={article.openAccess === opt}
-                        onChange={(e) =>
-                          dispatch(
-                            updateArticleField({
-                              field: "openAccess",
-                              value: e.target.value,
-                            })
-                          )
-                        }
-                      />
-                      {opt}
-                    </label>
-                  ))}
+                  <label className="flex items-center gap-1">
+                    <input
+                      type="radio"
+                      name="openAccess"
+                      checked={article.openAccess === true}
+                      onChange={() =>
+                        dispatch(
+                          updateArticleField({
+                            field: "openAccess",
+                            value: true,
+                          })
+                        )
+                      }
+                    />
+                    Oui
+                  </label>
+
+                  <label className="flex items-center gap-1">
+                    <input
+                      type="radio"
+                      name="openAccess"
+                      checked={article.openAccess === false}
+                      onChange={() =>
+                        dispatch(
+                          updateArticleField({
+                            field: "openAccess",
+                            value: false,
+                          })
+                        )
+                      }
+                    />
+                    Non
+                  </label>
                 </div>
               </div>
 

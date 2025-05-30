@@ -14,6 +14,7 @@ const initialState = {
   pdfRelativePath: "None",
   referenceType: "",
   oa_status: false,
+  openAccess: false,
   topics: [],
   domains: [],
   fields: [],
