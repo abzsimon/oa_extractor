@@ -37,7 +37,7 @@ const DbStatusPill = ({ oaId }) => {
           : "bg-purple-50 text-purple-800 border border-purple-200"
       }`}
     >
-      💾 {isInDb ? "In DB" : "Not in DB"}
+      {isInDb ? "💾✅" : "💾❌"}
     </span>
   );
 };

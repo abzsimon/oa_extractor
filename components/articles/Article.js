@@ -45,7 +45,13 @@ export default function ArticlePage() {
       );
       if (dbRes.ok) {
         const dbArticle = await dbRes.json();
-        setAuthors(dbArticle.authors?.map((oaId) => ({ oaId })) || []);
+        setAuthors(
+          (dbArticle.authors || []).map((oaId, idx) => ({
+            oaId, // transmis à AuthorCard
+            name: dbArticle.authorsFullNames?.[idx] || "Unknown Author",
+          }))
+        );
+
         dispatch(setArticle({ ...dbArticle, isInDb: true }));
         return;
       }
@@ -143,15 +149,18 @@ export default function ArticlePage() {
             {articleRedux && articleRedux.id ? (
               <ArticleCard article={articleRedux} />
             ) : (
-              <p className="text-gray-600">Aucun article sélectionné.</p>
+              <p className="text-gray-600">
+                Start typing something in the searchbar to select an article to
+                annotate
+              </p>
             )}
           </div>
           {/* Auteurs en bas */}
-          <div className="border-t pt-4">
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-4">
+          <div className="pt-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-2">
               {authors.map((author, idx) => (
                 <div key={idx} className="cursor-pointer">
-                  <AuthorCard author={author} />
+                  <AuthorCard author={author} small />
                 </div>
               ))}
             </div>

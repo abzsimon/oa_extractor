@@ -14,8 +14,18 @@ const statusLabels = {
   H: "Non renseigné",
 };
 
-const AuthorCard = ({ author, source = "default" }) => {
+/**
+ * Affiche une carte auteur.
+ *
+ * Props:
+ * - author    : objet auteur (OpenAlex ou DB)
+ * - source    : "default" | "db" (masque DbStatusPill si "db")
+ * - small     : bool → n'affiche que le nom + DbStatusPill
+ */
+const AuthorCard = ({ author, source = "default", small = false }) => {
   const router = useRouter();
+
+  // Normalise pour avoir toujours { name, oaId, … }
   const {
     name,
     oaId,
@@ -31,6 +41,7 @@ const AuthorCard = ({ author, source = "default" }) => {
 
   const [showModal, setShowModal] = useState(false);
 
+  // Helpers
   const g = gender || "unknown";
   const s = status || "H";
 
@@ -48,6 +59,20 @@ const AuthorCard = ({ author, source = "default" }) => {
     }
   };
 
+  /* ---------- VERSION COMPACTE ---------- */
+  if (small) {
+    return (
+      <div
+        onClick={handleClick}
+        className="bg-white border border-gray-200 rounded-lg p-1 shadow-sm hover:shadow-md transition text-sm flex items-center gap-2 cursor-pointer"
+      >
+        {source !== "db" && <DbStatusPill oaId={oaId} />}
+        <span className="text-gray-800 truncate">{name}</span>
+      </div>
+    );
+  }
+
+  /* ---------- VERSION COMPLÈTE ---------- */
   return (
     <div
       onClick={handleClick}
@@ -81,10 +106,9 @@ const AuthorCard = ({ author, source = "default" }) => {
           )}
         </div>
       </div>
-
       {/* NAME + STATUS */}
       <div className="flex items-center gap-2 mt-1.5">
-        <h3 className="text-sm font-semibold text-gray-800">{name}</h3>
+        <h3 className="text-sm font-semibold text-gray-800 truncate">{name}</h3>
         <span
           title={statusLabels[s]}
           className="text-xs font-medium bg-yellow-50 text-yellow-800 px-2 py-0.5 rounded-full"
@@ -92,59 +116,52 @@ const AuthorCard = ({ author, source = "default" }) => {
           {s}
         </span>
       </div>
-
       {/* PUBS */}
       {works_count > 0 && (
         <div className="text-xs text-gray-600 mt-1.5">
           📚 {works_count} publication{works_count > 1 ? "s" : ""}
         </div>
       )}
+      {/* INSTITUTIONS */}
+      {institutions.length > 0 && (
+        <div className="flex items-start text-xs mt-1.5">
+          <span className="w-20 text-gray-500 flex-shrink-0">Inst.:</span>
 
-{/* INSTITUTIONS */}
-{institutions.length > 0 && (
-  <div className="flex items-start text-xs mt-1.5">
-    <span className="w-20 text-gray-500 flex-shrink-0">Inst.:</span>
+          <div className="flex-1 flex gap-1 overflow-hidden">
+            <div className="bg-gray-100 text-gray-700 px-2 py-0.5 rounded border border-gray-200 truncate overflow-hidden whitespace-nowrap flex-1">
+              {institutions[0]}
+            </div>
 
-    <div className="flex-1 flex gap-1 overflow-hidden">
-      <div className="bg-gray-100 text-gray-700 px-2 py-0.5 rounded border border-gray-200 truncate overflow-hidden whitespace-nowrap flex-1">
-        {institutions[0]}
-      </div>
-
-      {institutions.length > 1 && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            setShowModal(true);
-          }}
-          className="text-blue-600 underline flex-shrink-0"
-        >
-          +{institutions.length - 1}
-        </button>
+            {institutions.length > 1 && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowModal(true);
+                }}
+                className="text-blue-600 underline flex-shrink-0"
+              >
+                +{institutions.length - 1}
+              </button>
+            )}
+          </div>
+        </div>
       )}
-    </div>
-  </div>
-)}
-
-
       {/* COUNTRIES */}
       {countries.length > 0 && (
         <div className="flex items-start text-xs mt-1.5">
           <span className="w-20 text-gray-500">Countries:</span>
-          <span className="text-gray-700">{countries.join(", ")}</span>
+          <span className="text-gray-700 truncate">{countries.join(", ")}</span>
         </div>
       )}
-
-      {/* GENDER
-<div className="flex items-start text-xs mt-1.5">
-  <span className="w-20 text-gray-500">Gender:</span>
-  <span
-    className={`px-2 py-0.5 rounded-full font-medium ${genderColor[g]} truncate max-w-[6ch]`}
-  >
-    {g === "unknown" ? "N/A" : g}
-  </span>
-</div> */}
-
-
+      {/*GENDER*/}
+      <div className="flex items-start text-xs mt-1.5">
+        <span className="w-20 text-gray-500">Gender:</span>
+        <span
+          className={`px-2 py-0.5 rounded-full font-medium ${genderColor[g]} truncate max-w-[6ch]`}
+        >
+          {g === "unknown" ? "N/A" : g}
+        </span>
+      </div>
       {/* DOMAINS */}
       {top_two_domains.length > 0 && (
         <div className="mt-1.5">
@@ -164,7 +181,6 @@ const AuthorCard = ({ author, source = "default" }) => {
           </div>
         </div>
       )}
-
       {/* TOPICS */}
       {top_five_topics.length > 0 && (
         <div className="mt-1.5">
@@ -181,7 +197,6 @@ const AuthorCard = ({ author, source = "default" }) => {
           </div>
         </div>
       )}
-
       {/* MODAL */}
       {showModal && (
         <div

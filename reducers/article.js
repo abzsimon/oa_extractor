@@ -23,6 +23,7 @@ const initialState = {
   keywords: [],
   objectFocus: "",
   dataTypesDiscussed: [],
+  additionalDataTypes: [],      // saisies manuelles
   discourseGenre: [],
   methodology: [],
   funding: "",

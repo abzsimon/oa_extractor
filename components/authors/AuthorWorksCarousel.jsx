@@ -3,8 +3,11 @@ import { useDispatch } from "react-redux";
 import { setSelectedArticleId } from "../../reducers/user";
 import { useRouter } from "next/router";
 
-// Util pour normaliser l’id OpenAlex
+// Petit utilitaire pour normaliser l’ID OpenAlex → "W...."
 const stripOpenAlexId = (id) => id?.replace("https://openalex.org/", "") || id;
+
+// Pause asynchrone
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export default function AuthorWorksBrowser({ authorId, displayCount = 6 }) {
   const [allWorks, setAllWorks] = useState([]);
@@ -17,49 +20,66 @@ export default function AuthorWorksBrowser({ authorId, displayCount = 6 }) {
 
   useEffect(() => {
     if (!authorId) return;
-    setLoading(true);
-    setError(null);
 
-    const perPage = 60;
-    // 1ère requête avec sort dès le début !
-    fetch(`https://api.openalex.org/works?filter=author.id:${authorId}&select=id,doi,title,display_name,publication_year,language,open_access&per-page=${perPage}&sort=publication_year:desc`)
-      .then((res) => res.json())
-      .then(async (data) => {
-        const total = data.meta?.count || 0;
-        let results = data.results || [];
+    let cancelled = false;
+    const fetchAllWorks = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const perPage = 60;
+        const baseUrl =
+          `https://api.openalex.org/works?filter=author.id:${authorId}` +
+          `&select=id,doi,title,display_name,publication_year,language,open_access` +
+          `&per-page=${perPage}&sort=publication_year:desc&mailto=simon.apartis@cnrs.fr`;
+
+        // --- Page 1 ---
+        const firstPage = await fetch(baseUrl).then((res) => res.json());
+        if (cancelled) return;
+
+        let results = firstPage.results || [];
+        const total = firstPage.meta?.count || 0;
         const pages = Math.ceil(total / perPage);
-        if (pages > 1) {
-          const fetches = [];
-          for (let p = 2; p <= pages; p++) {
-            fetches.push(
-              fetch(`https://api.openalex.org/works?filter=author.id:${authorId}&select=id,doi,title,display_name,publication_year,language,open_access&per-page=${perPage}&page=${p}&sort=publication_year:desc`)
-                .then(res => res.json())
-                .then(d => d.results || [])
-            );
-          }
-          const more = await Promise.all(fetches);
-          results = results.concat(...more);
+
+        // --- Pages suivantes avec 1 s d'intervalle ---
+        for (let p = 2; p <= pages; p++) {
+          await sleep(1000); // <—— pause de 1 s avant chaque appel
+          const pageData = await fetch(`${baseUrl}&page=${p}`).then((res) => res.json());
+          if (cancelled) return;
+          results = results.concat(pageData.results || []);
         }
+
         setAllWorks(results);
-      })
-      .catch((err) => {
+      } catch (err) {
+        console.error("Error fetching works:", err);
         setError("Failed to load publications.");
         setAllWorks([]);
-        console.error("Error fetching works:", err);
-      })
-      .finally(() => setLoading(false));
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    fetchAllWorks();
+
+    // Cleanup si le composant se démonte ou si authorId change
+    return () => {
+      cancelled = true;
+    };
   }, [authorId]);
 
-  // Filtrage par titre
+  // --- Filtrage et pagination côté client ---
   const filteredWorks = allWorks.filter((pub) =>
     (pub.title || pub.display_name || "")
       .toLowerCase()
       .includes(search.toLowerCase())
   );
   const pageCount = Math.ceil(filteredWorks.length / displayCount);
-  const currentWorks = filteredWorks.slice(page * displayCount, (page + 1) * displayCount);
+  const currentWorks = filteredWorks.slice(
+    page * displayCount,
+    (page + 1) * displayCount
+  );
 
-  // Reset page à chaque changement de recherche
+  // Réinitialise la page affichée si la recherche ou l'auteur change
   useEffect(() => {
     setPage(0);
   }, [search, authorId]);
@@ -73,11 +93,14 @@ export default function AuthorWorksBrowser({ authorId, displayCount = 6 }) {
         <h3 className="text-base font-bold flex-shrink-0">
           Publications de l’auteur
         </h3>
+        <h2 className="text-xs text-amber-300 italic">
+          Le chargement est lent pour éviter les erreurs 429 OpenAlex
+        </h2>
         <input
           type="text"
           placeholder="Rechercher dans les titres…"
           value={search}
-          onChange={e => setSearch(e.target.value)}
+          onChange={(e) => setSearch(e.target.value)}
           className="md:w-64 w-full p-2 border rounded text-sm"
         />
         <div className="flex gap-2 items-center flex-shrink-0">
@@ -100,6 +123,7 @@ export default function AuthorWorksBrowser({ authorId, displayCount = 6 }) {
           </button>
         </div>
       </div>
+
       {loading ? (
         <p className="text-gray-500 italic">Chargement…</p>
       ) : error ? (
