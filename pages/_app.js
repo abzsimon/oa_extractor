@@ -1,19 +1,27 @@
+// pages/_app.js
 import "../styles/globals.css";
 import Head from "next/head";
 import Menu from "../components/Menu";
 import { Provider } from "react-redux";
 import { configureStore } from "@reduxjs/toolkit";
-// ne pas oublier d'importer les reducers pour les combiner
+
+// Tes slices Redux
 import user from "../reducers/user";
 import author from "../reducers/author";
-import article from "../reducers/article"
+import article from "../reducers/article";
 
+// Combine reducers into a rootReducer
+const rootReducer = {
+  user,
+  author,
+  article,
+};
+
+// Configure Redux store
 const store = configureStore({
-  reducer: {
-    user: user,
-    author: author,
-    article: article,
-  },
+  reducer: rootReducer,
+  // Enable Redux DevTools in development
+  devTools: process.env.NODE_ENV !== 'production',
 });
 
 function App({ Component, pageProps }) {
