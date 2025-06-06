@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useSelector } from "react-redux";  // Pour accéder au store Redux
 import ArticleModal from "./DatabaseArticlesModal";
 
 export default function DatabaseArticles() {
@@ -6,20 +7,45 @@ export default function DatabaseArticles() {
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(null);
 
+  // Récupérer le token depuis Redux
+  const token = useSelector((state) => state.user.token);  // Remplacez par le chemin correct si nécessaire
+  const projectId = useSelector((state) => state.user.projectIds?.[0]);  // Remplacez par le chemin correct vers projectId
+
   useEffect(() => {
     const loadArticles = async () => {
       try {
-        const res = await fetch("https://oa-extractor-backend.vercel.app/articles");
+        if (!token || !projectId) {
+          console.error("Token ou projectId manquant");
+          return;
+        }
+
+        // Utilisation de la variable d'environnement BACKEND pour l'URL
+        const backendUrl = process.env.NEXT_PUBLIC_API_BACKEND;
+
+        // Effectuer la requête en incluant le token et le projectId dans l'en-tête et l'URL
+        const res = await fetch(`${backendUrl}/articles?projectId=${projectId}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`, // Ajout du token dans l'en-tête Authorization
+            'Content-Type': 'application/json', // Indique que la réponse sera en JSON
+          }
+        });
+
+        if (!res.ok) {
+          throw new Error(`Erreur ${res.status}: ${res.statusText}`);
+        }
+
         const json = await res.json();
-        setArticles(json.data || json || []);
+        setArticles(json.data || json || []); // Traiter la réponse
       } catch (err) {
         console.error("Erreur chargement articles:", err);
       } finally {
         setLoading(false);
       }
     };
+
     loadArticles();
-  }, []);
+  }, [token, projectId]); // Dépendances sur le token et le projectId pour recharger les articles lorsque l'un d'eux change
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-4">
