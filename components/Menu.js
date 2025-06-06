@@ -90,7 +90,7 @@ export default function Menu() {
       setUsername("");
       setPassword("");
       setIsSubmitting(false);
-      router.replace("/"); // Redirect to desired page after login (if needed)
+      // Pas de redirection ici
     } catch (err) {
       setErrorMsg("Problème réseau ou serveur indisponible");
       setIsSubmitting(false);
@@ -100,6 +100,7 @@ export default function Menu() {
   // Se déconnecter
   const handleLogout = () => {
     dispatch(logout());
+    // Pas de redirection ici
   };
 
   // Use useEffect to log the Redux state after login

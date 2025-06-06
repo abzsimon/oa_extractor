@@ -7,18 +7,22 @@ export default function DatabaseArticles() {
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(null);
 
-  // Récupérer le token depuis Redux
-  const token = useSelector((state) => state.user.token);  // Remplacez par le chemin correct si nécessaire
-  const projectId = useSelector((state) => state.user.projectIds?.[0]);  // Remplacez par le chemin correct vers projectId
+  // Récupérer le token et projectId depuis Redux
+  const token = useSelector((state) => state.user.token);  // Accéder au token dans Redux
+  const projectId = useSelector((state) => state.user.projectIds?.[0]);  // Accéder au projectId dans Redux
+
+  // Vérifier si l'utilisateur est connecté
+  const isLoggedIn = Boolean(token && projectId);
 
   useEffect(() => {
     const loadArticles = async () => {
-      try {
-        if (!token || !projectId) {
-          console.error("Token ou projectId manquant");
-          return;
-        }
+      if (!isLoggedIn) {
+        console.log("Utilisateur non connecté.");
+        setLoading(false);
+        return;
+      }
 
+      try {
         // Utilisation de la variable d'environnement BACKEND pour l'URL
         const backendUrl = process.env.NEXT_PUBLIC_API_BACKEND;
 
@@ -45,15 +49,17 @@ export default function DatabaseArticles() {
     };
 
     loadArticles();
-  }, [token, projectId]); // Dépendances sur le token et le projectId pour recharger les articles lorsque l'un d'eux change
+  }, [isLoggedIn, token, projectId]); // Dépendances sur le token et projectId pour recharger les articles lorsque l'un d'eux change
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-4">
       <h2 className="text-lg font-semibold mb-4">Articles commentés</h2>
       {loading ? (
         <p className="text-gray-500">Chargement des articles...</p>
+      ) : !isLoggedIn ? (
+        <p className="text-gray-500 italic">Vous devez être connecté pour voir les articles.</p>
       ) : articles.length === 0 ? (
-        <p className="text-gray-500 italic">Connectez-vous pour accéder à la liste des fiches d'articles annotés</p>
+        <p className="text-gray-500 italic">Aucun article en base.</p>
       ) : (
         <div className="flex flex-col gap-2">
           {articles.map((a, i) => (
