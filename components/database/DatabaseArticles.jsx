@@ -53,7 +53,7 @@ export default function DatabaseArticles() {
       {loading ? (
         <p className="text-gray-500">Chargement des articles...</p>
       ) : articles.length === 0 ? (
-        <p className="text-gray-500 italic">Aucun article en base.</p>
+        <p className="text-gray-500 italic">Connectez-vous pour accéder à la liste des fiches d'articles annotés</p>
       ) : (
         <div className="flex flex-col gap-2">
           {articles.map((a, i) => (

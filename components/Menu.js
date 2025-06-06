@@ -100,7 +100,6 @@ export default function Menu() {
   // Se déconnecter
   const handleLogout = () => {
     dispatch(logout());
-    router.push("/");
   };
 
   // Use useEffect to log the Redux state after login
