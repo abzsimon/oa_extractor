@@ -28,6 +28,8 @@ import { RefreshCw, AlertCircle } from "lucide-react";
 
 // Palette per dataset
 const COLOR_MAP = {
+  fields: "#59a14f",
+  subfields: "#9c755f",
   languages: "#4e79a7",
   referenceTypes: "#f28e2b",
   objectFocus: "#8dd1e1",
@@ -158,6 +160,8 @@ export default function ArticleStatsDashboard({
 
   // Facettes à dessiner en barres horizontales
   const barFacets = [
+    { key: "fields", label: "Répartition du corpus en fields" },
+    { key: "subfields", label: "Répartition du corpus en subfields" },
     { key: "languages", label: "Langues" },
     { key: "referenceTypes", label: "Types de référence" },
     { key: "objectFocus", label: "Focus objet" },
@@ -166,8 +170,6 @@ export default function ArticleStatsDashboard({
     { key: "discourseGenre", label: "Genres de discours" },
     { key: "barriers", label: "Barrières" },
     { key: "positionOnOpenAccessAndIssues", label: "Position OA & Issues" },
-    { key: "fields", label: "Répartition du corpus en fields" },
-    { key: "subfields", label: "Répartition du corpus en subfields" },
   ];
 
   // Open‑Access pie data fusionnée
@@ -182,11 +184,11 @@ export default function ArticleStatsDashboard({
   const yearData = [...stats.byYear].sort((a, b) => a._id - b._id);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-4">
       {/* Header */}
       <div>
         <h2 className="text-2xl font-bold text-gray-800">
-          Statistiques – {projectName || projectId}
+          Statistiques articles – {projectName || projectId}
         </h2>
         <p className="text-sm text-gray-500">
           {new Date().toLocaleDateString("fr-FR")} – {stats.totalArticles}{" "}
@@ -263,48 +265,6 @@ export default function ArticleStatsDashboard({
                   ]}
                 />
               </PieChart>
-            </ResponsiveContainer>
-          </ChartCard>
-        )}
-
-        {/* ------------- Fields ---------------- */}
-        {stats.fields.length > 0 && (
-          <ChartCard title="Répartition du corpus en fields" className="p-2">
-            {/* ajustez la hauteur si nécessaire : 160 px pour ~6-7 lignes */}
-            <ResponsiveContainer width="100%" height={160}>
-              {/* ⬇️  barres horizontales */}
-              <BarChart
-                data={stats.fields}
-                layout="vertical"
-                margin={{ top: 0, right: 20, left: 10, bottom: 0 }}
-              >
-                {/* axe X = valeurs numériques */}
-                <XAxis type="number" />
-                {/* axe Y = catégories (les fields) */}
-                <YAxis dataKey="_id" type="category" width={120} />
-                <CartesianGrid strokeDasharray="3 3" />
-                <Tooltip />
-                <Bar dataKey="count" />
-              </BarChart>
-            </ResponsiveContainer>
-          </ChartCard>
-        )}
-
-        {/* ------------- Subfields -------------- */}
-        {stats.subfields.length > 0 && (
-          <ChartCard title="Répartition du corpus en subfields" className="p-2">
-            <ResponsiveContainer width="100%" height={160}>
-              <BarChart
-                data={stats.subfields}
-                layout="vertical"
-                margin={{ top: 0, right: 20, left: 10, bottom: 0 }}
-              >
-                <XAxis type="number" />
-                <YAxis dataKey="_id" type="category" width={140} />
-                <CartesianGrid strokeDasharray="3 3" />
-                <Tooltip />
-                <Bar dataKey="count" />
-              </BarChart>
             </ResponsiveContainer>
           </ChartCard>
         )}
