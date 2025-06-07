@@ -8,11 +8,27 @@ import ArticleSearch from "../../components/articles/ArticleSearch";
 import ArticleForm from "./ArticleForm";
 
 export default function ArticlePage() {
-  const selectedArticleId =
-    useSelector((state) => state.user.selectedArticleId) || "";
   const dispatch = useDispatch();
+
+  // --- Auth depuis Redux ----------------------------------------------------
+  const token      = useSelector((s) => s.user.token);
+  const projectId  = useSelector((s) => s.user.projectIds?.[0]);
+  const isLoggedIn = Boolean(token && projectId);
+
+  // --- Article choisi dans Redux -------------------------------------------
+  const selectedArticleId =
+    useSelector((s) => s.user.selectedArticleId) || "";
+
+  // --- Config API -----------------------------------------------------------
+  const backendUrl = process.env.NEXT_PUBLIC_API_BACKEND;      // ex : http://localhost:3000
+  const apiUrl     = `${backendUrl}/articles`;
+
+  // --- Local state ----------------------------------------------------------
   const [authors, setAuthors] = useState([]);
 
+  // -------------------------------------------------------------------------
+  // Utils : reconstruire l’abstract OpenAlex et extraire l’ID
+  // -------------------------------------------------------------------------
   const reconstructAbstract = (abstractInvertedIndex) => {
     if (!abstractInvertedIndex) return "";
     const abstractIndex = {};
@@ -31,6 +47,9 @@ export default function ArticlePage() {
     return match ? match[0] : url;
   };
 
+  // -------------------------------------------------------------------------
+  // Chargement de l’article (DB sécurisée si connecté, sinon OpenAlex)
+  // -------------------------------------------------------------------------
   const fetchData = useCallback(async () => {
     const id = selectedArticleId;
     if (!id) {
@@ -39,24 +58,30 @@ export default function ArticlePage() {
       return;
     }
 
-    try {
-      const dbRes = await fetch(
-        `https://oa-extractor-backend.vercel.app/articles/${id}`
-      );
-      if (dbRes.ok) {
-        const dbArticle = await dbRes.json();
-        setAuthors(
-          (dbArticle.authors || []).map((oaId, idx) => ({
-            oaId, // transmis à AuthorCard
-            name: dbArticle.authorsFullNames?.[idx] || "Unknown Author",
-          }))
+    /* ---------- 1) Tentative DB interne (seulement si connecté) ---------- */
+    if (isLoggedIn) {
+      try {
+        const dbRes = await fetch(
+          `${apiUrl}/${id}?projectId=${projectId}`,
+          { headers: { Authorization: `Bearer ${token}` } }
         );
-
-        dispatch(setArticle({ ...dbArticle, isInDb: true }));
-        return;
+        if (dbRes.ok) {
+          const dbArticle = await dbRes.json();
+          setAuthors(
+            (dbArticle.authors || []).map((oaId, idx) => ({
+              oaId,
+              name: dbArticle.authorsFullNames?.[idx] || "Unknown Author",
+            }))
+          );
+          dispatch(setArticle({ ...dbArticle, isInDb: true }));
+          return;                                      // ✅ trouvé en DB
+        }
+      } catch (err) {
+        console.error("DB fetch error:", err);
       }
-    } catch {}
+    }
 
+    /* ---------- 2) Fallback : OpenAlex ----------------------------------- */
     try {
       const res = await fetch(`https://api.openalex.org/works/${id}`);
       if (!res.ok) throw new Error("Failed to fetch article");
@@ -75,7 +100,6 @@ export default function ArticlePage() {
         ],
         countries: author.countries ? [...new Set(author.countries)] : [],
       }));
-
       setAuthors(authorsList);
 
       const articleDetails = {
@@ -98,8 +122,7 @@ export default function ArticlePage() {
         ],
         domains: [
           ...new Set(
-            data.topics?.map((t) => t.domain?.display_name).filter(Boolean) ||
-              []
+            data.topics?.map((t) => t.domain?.display_name).filter(Boolean) || []
           ),
         ],
         fields: [
@@ -120,15 +143,21 @@ export default function ArticlePage() {
     } catch (err) {
       setAuthors([]);
       dispatch(setArticle({}));
-      console.error("Fetch error:", err);
+      console.error("OpenAlex fetch error:", err);
     }
-  }, [selectedArticleId, dispatch]);
+  }, [selectedArticleId, isLoggedIn, token, projectId, apiUrl, dispatch]);
 
+  // -------------------------------------------------------------------------
+  // Effets : ➊ id change ➋ login/logout change
+  // -------------------------------------------------------------------------
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
-  const articleRedux = useSelector((state) => state.article);
+  /* ----------------------------------------------------------------------- */
+  /* UI                                                                      */
+  /* ----------------------------------------------------------------------- */
+  const articleRedux = useSelector((s) => s.article);
 
   return (
     <>

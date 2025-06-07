@@ -3,10 +3,24 @@ import TopicTreeExpandable from "./TopicTreeExpandable";
 import { updateAuthorField } from "../../reducers/author";
 import AuthorActions from "./AuthorActions";
 import DbStatusPill from "./DbStatusPill";
-import AuthorWorksBrowser from "./AuthorWorksCarousel"
+import AuthorWorksBrowser from "./AuthorWorksCarousel";
+
+/* ----------------------------------------------------------------------- */
+/* Mapping lettre → libellé complet                                        */
+/* ----------------------------------------------------------------------- */
+const statusLabels = {
+  A: "A - Sénior : DiR, PU",
+  B: "B - Intermédiaire : McF, CR",
+  C: "C - Junior : Doct., IR, Post-doc",
+  D: "D - Privé : cabinet, entreprise",
+  E: "E - Adm. / Ing. infra",
+  F: "F - Resp. politique / institutionnel",
+  G: "G - Autre",
+  H: "H - Non renseigné",
+};
 
 export default function AuthorViewer() {
-  const author = useSelector((state) => state.author);
+  const author   = useSelector((state) => state.author);
   const dispatch = useDispatch();
 
   if (!author || !author.oa_id) {
@@ -98,7 +112,7 @@ export default function AuthorViewer() {
           </div>
         </div>
 
-        {/* Colonne 2 : Top topics & domains */}
+        {/* Colonne 2 : Top topics */}
         <div className="space-y-3 ml-4">
           <div>
             <p className="font-semibold">Top 5 Topics</p>
@@ -107,10 +121,7 @@ export default function AuthorViewer() {
                 <span
                   key={i}
                   className="px-3 py-1 text-sm font-medium text-gray-800"
-                  style={{
-                    backgroundColor: "#f0f0f0",
-                    borderRadius: "999px",
-                  }}
+                  style={{ backgroundColor: "#f0f0f0", borderRadius: "999px" }}
                 >
                   {t}
                 </span>
@@ -157,9 +168,10 @@ export default function AuthorViewer() {
                 <option value="">--</option>
                 <option value="female">Femme</option>
                 <option value="male">Homme</option>
-                <option value="nonbinary">Non-binaire</option>
+                <option value="nonbinary">Non-défini</option>
               </select>
             </label>
+
             <label>
               Statut
               <select
@@ -168,9 +180,9 @@ export default function AuthorViewer() {
                 className="ml-2 border border-gray-300 rounded px-2 py-1 text-sm w-full mt-1"
               >
                 <option value="">--</option>
-                {["A", "B", "C", "D", "E", "F", "G", "H"].map((s) => (
-                  <option key={s} value={s}>
-                    {s}
+                {Object.entries(statusLabels).map(([code, label]) => (
+                  <option key={code} value={code}>
+                    {label}
                   </option>
                 ))}
               </select>
@@ -190,11 +202,12 @@ export default function AuthorViewer() {
           />
         </div>
       </div>
+
       {/* CRUD */}
       <AuthorActions />
 
       {/* 🔢 Works IDs */}
-      <AuthorWorksBrowser authorId={author.oa_id}/>
+      <AuthorWorksBrowser authorId={author.oa_id} />
     </div>
   );
 }

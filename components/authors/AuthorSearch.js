@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
 import { clearAuthor, setAuthor } from "../../reducers/author";
@@ -13,40 +13,56 @@ import AuthorCard from "./AuthorCard";
 
 export default function AuthorSearch({ onAuthorSelected, oa_id }) {
   const dispatch = useDispatch();
-  const router = useRouter();
+  const router   = useRouter();
+
+  // --- Auth depuis Redux ----------------------------------------------------
+  const token      = useSelector((s) => s.user.token);
+  const projectId  = useSelector((s) => s.user.projectIds?.[0]);
+  const isLoggedIn = Boolean(token && projectId);
+
+  // --- Config API -----------------------------------------------------------
+  const backendUrl = process.env.NEXT_PUBLIC_API_BACKEND;      // ex : http://localhost:3000
+  const apiUrl     = `${backendUrl}/authors`;
+
+  // --- Local state ----------------------------------------------------------
   const [disambiguationQuery, setDisambiguationQuery] = useState("");
   const [authors, setAuthors] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedAuthor, setSelectedAuthor] = useState(null);
+  const alreadyLoaded = useRef(false);                         // éviter double chargement
 
-  const alreadyLoaded = useRef(false); // ✅ éviter double chargement
-
-  // 🔄 Si on arrive avec un ?oa_id=... depuis un autre écran
+  // -------------------------------------------------------------------------
+  // Arrivée via ?oa_id=…
+  // -------------------------------------------------------------------------
   useEffect(() => {
     if (oa_id && !alreadyLoaded.current) {
       alreadyLoaded.current = true;
       dispatch(clearAuthor());
       handleSelectAuthor({ oa_id });
 
-      // Nettoyer l'URL après chargement
+      // Nettoyer l’URL après chargement
       router.replace("/Authors", undefined, { shallow: true });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [oa_id]);
 
+  // -------------------------------------------------------------------------
+  // Recherche dans OpenAlex (autocomplete)
+  // -------------------------------------------------------------------------
   const fetchData = async () => {
     if (!disambiguationQuery.trim()) return;
     setIsLoading(true);
 
     try {
-      const res = await fetch(
+      const res   = await fetch(
         `https://api.openalex.org/autocomplete/authors?q=${disambiguationQuery}`
       );
-      const data = await res.json();
+      const data  = await res.json();
       const parsed = (data.results || []).map((a) => ({
-        oa_id: a.id.match(/A\d+/)?.[0] || "",
+        oa_id:   a.id.match(/A\d+/)?.[0] || "",
         orcid_id:
           a.external_id?.match(/\d{4}-\d{4}-\d{4}-\d{4}/)?.[0] || "",
-        name: a.display_name || "Unknown Author",
+        name:      a.display_name || "Unknown Author",
         workCount: a.works_count || 0,
       }));
       setAuthors(parsed);
@@ -57,6 +73,9 @@ export default function AuthorSearch({ onAuthorSelected, oa_id }) {
     }
   };
 
+  // -------------------------------------------------------------------------
+  // Sélection d’un auteur : ⇢ DB locale si connecté, sinon OpenAlex directement
+  // -------------------------------------------------------------------------
   const handleSelectAuthor = async (author) => {
     const { oa_id } = author;
     if (!oa_id) return;
@@ -64,35 +83,41 @@ export default function AuthorSearch({ onAuthorSelected, oa_id }) {
     setSelectedAuthor(author);
 
     try {
-      // Check local DB first
-      const dbRes = await fetch(`https://oa-extractor-backend.vercel.app/authors/${oa_id}`);
-      if (dbRes.ok) {
-        console.log("vercel backend reached")
-        const dbAuthor = await dbRes.json();
-        const structured = {
-          ...dbAuthor,
-          topic_tree: convertTopicTreeForReducer(dbAuthor.topic_tree),
-          isInDb: true,
-        };
-        dispatch(setAuthor(structured));
-        onAuthorSelected?.(structured);
-        return;
+      // --- 1) Tentative DB interne (seulement si connecté)
+      if (isLoggedIn) {
+        const dbRes = await fetch(
+          `${apiUrl}/${oa_id}?projectId=${projectId}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+
+        if (dbRes.ok) {
+          const dbAuthor = await dbRes.json();
+          const structured = {
+            ...dbAuthor,
+            topic_tree: convertTopicTreeForReducer(dbAuthor.topic_tree),
+            isInDb: true,
+          };
+          dispatch(setAuthor(structured));
+          onAuthorSelected?.(structured);
+          setSelectedAuthor(null);
+          return;                    // ✅ trouvé en DB, on s’arrête là
+        }
       }
 
-      // Fallback to OpenAlex
-      const res = await fetch(`https://api.openalex.org/authors/${oa_id}`);
-      const data = await res.json();
+      // --- 2) Fallback : OpenAlex
+      const res       = await fetch(`https://api.openalex.org/authors/${oa_id}`);
+      const data      = await res.json();
 
-      const typesRes = await fetch(`${data.works_api_url}&group_by=type`);
+      const typesRes  = await fetch(`${data.works_api_url}&group_by=type`);
       const typesData = await typesRes.json();
-      const doctypes = (typesData.group_by || [])
+      const doctypes  = (typesData.group_by || [])
         .filter((d) => d.count > 0)
         .map((d) => ({
-          name: d.key_display_name,
+          name:     d.key_display_name,
           quantity: d.count,
         }));
 
-      const topic_tree = buildTopicTree(data.topics || []);
+      const topic_tree      = buildTopicTree(data.topics || []);
       const top_two_domains = getTopTwoDomains(topic_tree);
       const top_five_fields = getTopFiveFields(topic_tree);
       const top_five_topics = (data.topics || [])
@@ -100,28 +125,28 @@ export default function AuthorSearch({ onAuthorSelected, oa_id }) {
         .map((t) => t.display_name);
 
       const structuredAuthor = {
-        oa_id: data.id.replace("https://openalex.org/", ""),
-        orcid: data.orcid?.replace("https://orcid.org/", "") || "",
-        display_name: data.display_name || "",
-        cited_by_count: data.cited_by_count || 0,
-        works_count: data.works_count || 0,
-        institutions: data.last_known_institution?.display_name
+        oa_id:         data.id.replace("https://openalex.org/", ""),
+        orcid:         data.orcid?.replace("https://orcid.org/", "") || "",
+        display_name:  data.display_name || "",
+        cited_by_count:data.cited_by_count || 0,
+        works_count:   data.works_count || 0,
+        institutions:  data.last_known_institution?.display_name
           ? [data.last_known_institution.display_name]
           : [],
-        countries: data.last_known_institution?.country_code
+        countries:     data.last_known_institution?.country_code
           ? [data.last_known_institution.country_code.toUpperCase()]
           : [],
         overall_works: data.works_api_url,
         doctypes,
-        study_works: [],
+        study_works:   [],
         top_five_topics,
         top_five_fields,
         top_two_domains,
         topic_tree,
-        gender: "",
-        status: "",
-        annotation: "",
-        isInDb: false,
+        gender:        "",
+        status:        "",
+        annotation:    "",
+        isInDb:        false,
       };
 
       dispatch(setAuthor(structuredAuthor));
@@ -133,6 +158,9 @@ export default function AuthorSearch({ onAuthorSelected, oa_id }) {
     }
   };
 
+  // -------------------------------------------------------------------------
+  // UI
+  // -------------------------------------------------------------------------
   return (
     <div className="w-full h-full">
       <div className="flex flex-col gap-6">
@@ -185,9 +213,7 @@ export default function AuthorSearch({ onAuthorSelected, oa_id }) {
                   key={index}
                   onClick={() => handleSelectAuthor(author)}
                   className={`relative cursor-pointer ${
-                    selectedAuthor?.oa_id === author.oa_id
-                      ? "opacity-60"
-                      : ""
+                    selectedAuthor?.oa_id === author.oa_id ? "opacity-60" : ""
                   }`}
                 >
                   {selectedAuthor?.oa_id === author.oa_id && (
@@ -201,9 +227,9 @@ export default function AuthorSearch({ onAuthorSelected, oa_id }) {
                   <AuthorCard
                     author={{
                       display_name: author.name,
-                      oa_id: author.oa_id,
-                      orcid: author.orcid_id,
-                      works_count: author.workCount,
+                      oa_id:        author.oa_id,
+                      orcid:        author.orcid_id,
+                      works_count:  author.workCount,
                     }}
                     source="autocomplete"
                   />

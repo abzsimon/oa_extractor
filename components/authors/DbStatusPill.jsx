@@ -1,43 +1,81 @@
 import { useEffect, useState } from "react";
+import { useSelector } from "react-redux";
 
 const DbStatusPill = ({ oaId }) => {
-  const [isInDb, setIsInDb] = useState(false);
+  // --- Auth depuis Redux ----------------------------------------------------
+  const token      = useSelector((s) => s.user.token);
+  const projectId  = useSelector((s) => s.user.projectIds?.[0]);
+  const isLoggedIn = Boolean(token && projectId);
+
+  // --- Config API -----------------------------------------------------------
+  const backendUrl = process.env.NEXT_PUBLIC_API_BACKEND;      // ex : http://localhost:3000
+  const apiUrl     = `${backendUrl}/authors`;
+
+  // --- Local state ----------------------------------------------------------
+  // status = "unknown" | "inDb" | "notInDb"
+  const [status, setStatus] = useState("unknown");
   const [loading, setLoading] = useState(false);
 
+  // -------------------------------------------------------------------------
+  // Vérifie la présence en DB (seulement si connecté)
+  // -------------------------------------------------------------------------
   useEffect(() => {
-    if (!oaId) return;
+    if (!isLoggedIn || !oaId) {
+      setStatus("unknown");
+      return;
+    }
 
     const checkDb = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`https://oa-extractor-backend.vercel.app/authors/${oaId}`);
-        setIsInDb(res.ok);
+        const res = await fetch(
+          `${apiUrl}/${oaId}?projectId=${projectId}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        setStatus(res.ok ? "inDb" : "notInDb");
       } catch (err) {
         console.error("Error checking DB status:", err);
-        setIsInDb(false);
+        setStatus("notInDb");
       } finally {
         setLoading(false);
       }
     };
 
     checkDb();
-  }, [oaId]); // ← KEY POINT: will re-run if oaId changes!
+  }, [oaId, isLoggedIn, token, projectId, apiUrl]);
 
-  if (loading) {
+  // -------------------------------------------------------------------------
+  // Rendu
+  // -------------------------------------------------------------------------
+  if (!oaId) return null;
+
+  // Non connecté → invite à se connecter
+  if (!isLoggedIn) {
     return (
-      <span className="text-xs text-gray-400 italic">checking DB…</span>
+      <span
+        title="Connecte-toi pour sauvegarder cet auteur"
+        className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap bg-gray-50 text-gray-500 border border-gray-200"
+      >
+        💾❓
+      </span>
     );
   }
 
+  // En cours de vérification
+  if (loading) {
+    return <span className="text-xs text-gray-400 italic">checking…</span>;
+  }
+
+  // Résultat connu
   return (
     <span
       className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${
-        isInDb
+        status === "inDb"
           ? "bg-green-100 text-green-800 border border-green-200"
           : "bg-purple-50 text-purple-800 border border-purple-200"
       }`}
     >
-      {isInDb ? "💾✅" : "💾❌"}
+      {status === "inDb" ? "💾✅" : "💾❌"}
     </span>
   );
 };

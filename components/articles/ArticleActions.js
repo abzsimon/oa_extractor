@@ -2,26 +2,38 @@ import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { setArticle, clearArticle } from "../../reducers/article";
 
-const apiUrl = "https://oa-extractor-backend.vercel.app/articles";
-
 const ArticleActions = () => {
-  const article = useSelector((state) => state.article);
-  const dispatch = useDispatch();
+  const dispatch  = useDispatch();
+
+  // --- Sélection du store ---------------------------------------------------
+  const article    = useSelector((state) => state.article);
+  const token      = useSelector((state) => state.user.token);
+  const projectId  = useSelector((state) => state.user.projectIds?.[0]);
+  const isLoggedIn = Boolean(token && projectId);
+
+  // --- Config API -----------------------------------------------------------
+  const backendUrl = process.env.NEXT_PUBLIC_API_BACKEND;   // ex : http://localhost:3000
+  const apiUrl     = `${backendUrl}/articles`;
+
+  // --- Local state ----------------------------------------------------------
   const { id, isInDb } = article;
   const [shouldCheckDb, setShouldCheckDb] = useState(false);
 
-  // Vérifier si l'article existe en DB (pour activer/désactiver les boutons)
+  // -------------------------------------------------------------------------
+  // Vérifie si l’article existe déjà en DB
+  // -------------------------------------------------------------------------
   useEffect(() => {
-    if (!id || !shouldCheckDb) return;
+    if (!id || !shouldCheckDb || !isLoggedIn) return;
+
     const checkIfArticleInDb = async () => {
       try {
-        const res = await fetch(`${apiUrl}/${id}`);
+        const res = await fetch(`${apiUrl}/${id}?projectId=${projectId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
         if (res.ok) {
           const dbArticle = await res.json();
-          dispatch(setArticle({
-            ...dbArticle,
-            isInDb: true,
-          }));
+          dispatch(setArticle({ ...dbArticle, isInDb: true }));
         } else {
           dispatch(setArticle({ ...article, isInDb: false }));
         }
@@ -31,19 +43,32 @@ const ArticleActions = () => {
         setShouldCheckDb(false);
       }
     };
-    checkIfArticleInDb();
-    // eslint-disable-next-line
-  }, [shouldCheckDb, id]);
 
-  // Création d'article
+    checkIfArticleInDb();
+  }, [shouldCheckDb, id, token, projectId, isLoggedIn, dispatch, article]);
+
+  // -------------------------------------------------------------------------
+  // Création
+  // -------------------------------------------------------------------------
   const handleCreate = async () => {
+    if (!isLoggedIn) {
+      alert("Connecte-toi avant de créer un article.");
+      return;
+    }
+
     try {
+      const payload = { ...article, projectId };        // ← projectId dans le body
       const res = await fetch(apiUrl, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(article),
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
       });
+
       const data = await res.json();
+
       if (!res.ok) {
         alert(`Erreur création : ${data.message}`);
       } else {
@@ -55,20 +80,31 @@ const ArticleActions = () => {
     }
   };
 
-  // Mise à jour d'article
+  // -------------------------------------------------------------------------
+  // Mise à jour
+  // -------------------------------------------------------------------------
   const handleUpdate = async () => {
     if (!id) {
       alert("ID requis pour la mise à jour !");
       return;
     }
+    if (!isLoggedIn) {
+      alert("Connecte-toi avant de mettre à jour un article.");
+      return;
+    }
+
     try {
-      console.log("Article envoyé en DB (POST/PUT):", article);
-      const res = await fetch(`${apiUrl}/${id}`, {
+      const res = await fetch(`${apiUrl}/${id}?projectId=${projectId}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify(article),
       });
+
       const data = await res.json();
+
       if (!res.ok) {
         alert(`Erreur mise à jour : ${data.message}`);
       } else {
@@ -80,16 +116,28 @@ const ArticleActions = () => {
     }
   };
 
-  // Suppression d'article
+  // -------------------------------------------------------------------------
+  // Suppression
+  // -------------------------------------------------------------------------
   const handleDelete = async () => {
     if (!id) {
       alert("ID requis pour la suppression !");
       return;
     }
+    if (!isLoggedIn) {
+      alert("Connecte-toi avant de supprimer un article.");
+      return;
+    }
     if (!window.confirm(`Supprimer l'article ${id} ?`)) return;
+
     try {
-      const res = await fetch(`${apiUrl}/${id}`, { method: "DELETE" });
+      const res = await fetch(`${apiUrl}/${id}?projectId=${projectId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
       const data = await res.json();
+
       if (!res.ok) {
         alert(`Erreur suppression : ${data.message}`);
       } else {
@@ -101,34 +149,63 @@ const ArticleActions = () => {
     }
   };
 
+  // -------------------------------------------------------------------------
+  // UI
+  // -------------------------------------------------------------------------
   return (
     <div style={{ display: "flex" }}>
       <button
         onClick={handleCreate}
-        disabled={isInDb}
+        disabled={isInDb || !isLoggedIn}
         className={`px-2 py-1 rounded text-white ${
-          isInDb ? "bg-gray-300 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700"
+          isInDb || !isLoggedIn
+            ? "bg-gray-300 cursor-not-allowed"
+            : "bg-blue-600 hover:bg-blue-700"
         }`}
-        title={isInDb ? "Article déjà enregistré" : "Créer l'article"}
+        title={
+          !isLoggedIn
+            ? "Connexion requise"
+            : isInDb
+            ? "Article déjà enregistré"
+            : "Créer l'article"
+        }
       >
         🆕 Créer
       </button>
+
       <button
         onClick={handleUpdate}
-        disabled={!isInDb}
+        disabled={!isInDb || !isLoggedIn}
         className={`px-2 py-1 rounded text-white ml-2 ${
-          !isInDb ? "bg-gray-300 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700"
+          !isInDb || !isLoggedIn
+            ? "bg-gray-300 cursor-not-allowed"
+            : "bg-blue-600 hover:bg-blue-700"
         }`}
-        title={!isInDb ? "Créer l'article avant de mettre à jour" : "Mettre à jour"}
+        title={
+          !isLoggedIn
+            ? "Connexion requise"
+            : !isInDb
+            ? "Créer l'article avant de mettre à jour"
+            : "Mettre à jour"
+        }
       >
         ✏️ Mettre à jour
       </button>
+
       <button
         onClick={handleDelete}
-        disabled={!isInDb}
-        title={!isInDb ? "L'article ne peut pas être supprimé car il n'est pas en base" : "Supprimer l'article"}
+        disabled={!isInDb || !isLoggedIn}
+        title={
+          !isLoggedIn
+            ? "Connexion requise"
+            : !isInDb
+            ? "L'article ne peut pas être supprimé car il n'est pas en base"
+            : "Supprimer l'article"
+        }
         className={`px-2 py-1 rounded text-white ml-2 font-medium transition-colors duration-150 ${
-          !isInDb ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-red-600 hover:bg-red-700"
+          !isInDb || !isLoggedIn
+            ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+            : "bg-red-600 hover:bg-red-700"
         }`}
       >
         🗑️ Supprimer
