@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { useRouter } from "next/router";
 import { useSelector } from "react-redux";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -12,24 +11,29 @@ export default function ProjectPage() {
   const [editedDescription, setEditedDescription] = useState("");
   const [saving, setSaving] = useState(false);
 
-  // Check if the user is logged in and has a valid token
-  useEffect(() => {
-    if (!token) {
-      setLoading(false); // Stop loading since the user isn't logged in
-      return;
-    }
+  const backendUrl = process.env.NEXT_PUBLIC_API_BACKEND;
+  const apiUrl = `${backendUrl}/projects`;
 
-    if (!projectIds?.[0]) {
-      // Handle case where no project ID is available
+  // Helper to format dates consistently
+  const formatDate = (date) =>
+    date
+      ? new Date(date).toLocaleDateString("fr-FR", {
+          month: "2-digit",
+          year: "numeric",
+        })
+      : "—";
+
+  useEffect(() => {
+    if (!token || !projectIds?.[0]) {
       setLoading(false);
       return;
     }
 
-    let isMounted = true; // Prevent state updates if component is unmounted
+    let isMounted = true;
 
     const fetchProject = async () => {
       try {
-        const response = await fetch(`http://localhost:3000/projects/${projectIds[0]}`, {
+        const response = await fetch(`${apiUrl}/${projectIds[0]}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (response.ok) {
@@ -52,12 +56,12 @@ export default function ProjectPage() {
       }
     };
 
-    fetchProject(); // Call the async function
+    fetchProject();
 
     return () => {
-      isMounted = false; // Cleanup flag on unmount
+      isMounted = false;
     };
-  }, [token, projectIds]);
+  }, [token, projectIds, apiUrl]);
 
   const handleEdit = () => {
     setIsEditing(true);
@@ -72,24 +76,24 @@ export default function ProjectPage() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const response = await fetch(`http://localhost:3000/projects/${projectIds[0]}`, {
-        method: 'PATCH',
-        headers: { 
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
+      const response = await fetch(`${apiUrl}/${projectIds[0]}`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({ projectDescription: editedDescription }),
       });
-      
+
       if (response.ok) {
         const updatedProject = await response.json();
         setProject(updatedProject);
         setIsEditing(false);
       } else {
-        alert('Erreur lors de la sauvegarde');
+        alert("Erreur lors de la sauvegarde");
       }
     } catch (error) {
-      alert('Erreur lors de la sauvegarde');
+      alert("Erreur lors de la sauvegarde");
     } finally {
       setSaving(false);
     }
@@ -98,7 +102,11 @@ export default function ProjectPage() {
   if (loading) return <div className="p-4">Chargement...</div>;
 
   if (!token) {
-    return <div className="p-4 text-red-500">Login to access project description</div>;
+    return (
+      <div className="p-4 text-red-500">
+        Login to access project description
+      </div>
+    );
   }
 
   if (!project || !Object.keys(project).length)
@@ -138,7 +146,7 @@ export default function ProjectPage() {
             )}
           </div>
         </div>
-        
+
         {isEditing ? (
           <div className="space-y-2">
             <textarea
@@ -148,7 +156,8 @@ export default function ProjectPage() {
               placeholder="Entrez votre description en Markdown..."
             />
             <div className="text-xs text-gray-500">
-              💡 Utilisez la syntaxe Markdown: **gras**, *italique*, # Titre, - Liste, [lien](url)
+              💡 Utilisez la syntaxe Markdown: **gras**, *italique*, # Titre, -
+              Liste, [lien](url)
             </div>
           </div>
         ) : (
@@ -172,58 +181,21 @@ export default function ProjectPage() {
             ["Chargé sci", project.charge_projet_scientifique],
             ["Serv conv", project.service_conventionnement],
             ["Serv fin", project.service_financier],
+            ["T0 admin", formatDate(project.T0_administratif)],
+            ["T0 sci", formatDate(project.T0_scientifique)],
             [
-              "T0 admin",
-              project.T0_administratif
-                ? new Date(project.T0_administratif).toLocaleDateString(
-                    "fr-FR",
-                    { month: "2-digit", year: "numeric" }
-                  )
-                : "—",
+              "Durée init",
+              `${project.duree_scientifique_initiale || 0} mois`,
             ],
-            [
-              "T0 sci",
-              project.T0_scientifique
-                ? new Date(project.T0_scientifique).toLocaleDateString(
-                    "fr-FR",
-                    { month: "2-digit", year: "numeric" }
-                  )
-                : "—",
-            ],
-            ["Durée init", `${project.duree_scientifique_initiale || 0} mois`],
             [
               "Durée post-prolong.",
               `${project.duree_scientifique_prolongations || 0} mois`,
             ],
-            [
-              "Tfinal",
-              project.Tfinal_projet
-                ? new Date(project.Tfinal_projet).toLocaleDateString("fr-FR", {
-                    month: "2-digit",
-                    year: "numeric",
-                  })
-                : "—",
-            ],
+            ["Tfinal", formatDate(project.Tfinal_projet)],
             ["GitLab Token", project.gitlabToken ? "✓" : "—"],
             ["GitLab Backup", project.gitlabBackupProjectId ? "✓" : "—"],
-            [
-              "Créé",
-              project.createdAt
-                ? new Date(project.createdAt).toLocaleDateString("fr-FR", {
-                    month: "2-digit",
-                    year: "numeric",
-                  })
-                : "—",
-            ],
-            [
-              "Modifié",
-              project.updatedAt
-                ? new Date(project.updatedAt).toLocaleDateString("fr-FR", {
-                    month: "2-digit",
-                    year: "numeric",
-                  })
-                : "—",
-            ],
+            ["Créé", formatDate(project.createdAt)],
+            ["Modifié", formatDate(project.updatedAt)],
           ].map(([k, v], i) => (
             <div key={i} className="truncate">
               <span className="text-gray-600">{k}:</span> {v || "—"}
