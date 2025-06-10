@@ -29,6 +29,8 @@ export default function Menu() {
   const [errorMsg, setErrorMsg] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const backendUrl = process.env.NEXT_PUBLIC_API_BACKEND;
+
   // Classe CSS pour les boutons de navigation
   const navButtonClass = (href) => {
     const base =
@@ -58,10 +60,13 @@ export default function Menu() {
     }
 
     try {
-      const res = await fetch("http://localhost:3000/auth/login", {
+      const res = await fetch(`${backendUrl}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: loginUsername, password: loginPassword }), // Pass the correct user input values
+        body: JSON.stringify({
+          username: loginUsername,
+          password: loginPassword,
+        }), // Pass the correct user input values
       });
       const data = await res.json();
 
@@ -72,7 +77,14 @@ export default function Menu() {
       }
 
       // data contains { token, id, username, isActive, role, lastLogin, projectIds, createdAt, updatedAt }
-      const { token: jwtToken, username: userName, isActive, role, lastLogin, projectIds: ids } = data;
+      const {
+        token: jwtToken,
+        username: userName,
+        isActive,
+        role,
+        lastLogin,
+        projectIds: ids,
+      } = data;
 
       // On stocke dans Redux exactement ces champs (évite passwordHash)
       dispatch(
