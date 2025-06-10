@@ -1,11 +1,10 @@
 import { createSlice } from '@reduxjs/toolkit';
-
 const initialState = {
   // Champs OpenAlex / récupérés API
   id: "",
   title: "",
   authors: [],
-  authorsFullNames : [],
+  authorsFullNames: [],
   abstract: "No Abstract",
   publishedIn: "None",
   url: "None",
@@ -19,19 +18,22 @@ const initialState = {
   domains: [],
   fields: [],
   subfields: [],
+
   // Champs saisis manuellement
-  language: "",
+  language: null,
   keywords: [],
-  objectFocus: "",
+  objectFocus: null,
   dataTypesDiscussed: [],
-  additionalDataTypes: [],      // saisies manuelles
+  additionalDataTypes: [],
   discourseGenre: [],
   methodology: [],
-  funding: "",
-  positionOnDataOpenAccess: "",
+  funding: null,
+  positionOnDataOpenAccess: null,
   barriers: [],
   positionOnOpenAccessAndIssues: [],
-  remarks: "",
+  remarks: null,
+  completionRate: null,
+
   // Spécifique front
   isInDb: false,
 };

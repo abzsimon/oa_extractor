@@ -52,7 +52,7 @@ export default function DatabaseAuthors() {
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-4">
-      <h2 className="text-lg font-semibold mb-4">Auteurs</h2>
+      <h2 className="text-lg font-semibold mb-4">Auteurs annotés</h2>
       {loading ? (
         <p className="text-gray-500">Chargement des auteurs...</p>
       ) : !isLoggedIn ? (

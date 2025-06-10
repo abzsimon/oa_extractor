@@ -670,12 +670,27 @@ export default function ArticleForm() {
     );
   };
 
+  // Version avec des # et des .
+  const renderProgressBar = (completionRate) => {
+    const rate = Math.max(0, Math.min(100, completionRate || 0));
+    const filled = Math.round(rate / 5);
+    const empty = 20 - filled;
+    const bar = "#".repeat(filled) + ".".repeat(empty);
+    return `⏳ [${bar}] ${rate}%`;
+  };
+
   return (
     <div className="bg-white shadow mr-1 mt-1 p-3 text-sm flex flex-col">
       <header className="sticky top-0 z-30 bg-white border-b shadow-sm p-2 flex items-center justify-between gap-4 text-sm">
         <h2 className="font-bold text-base m-0 whitespace-nowrap">
           Annotation
         </h2>
+        <div>
+          {/* Barre de progression ASCII */}
+          <span className="font-mono text-xs text-gray-600">
+            {renderProgressBar(article.completionRate)}
+          </span>
+        </div>
         <nav className="flex gap-4 flex-wrap justify-center">
           <button
             className={`hover:underline ${
