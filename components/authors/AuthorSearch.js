@@ -64,6 +64,7 @@ export default function AuthorSearch({ onAuthorSelected, oa_id }) {
           a.external_id?.match(/\d{4}-\d{4}-\d{4}-\d{4}/)?.[0] || "",
         name:      a.display_name || "Unknown Author",
         workCount: a.works_count || 0,
+        source : "openalex"
       }));
       setAuthors(parsed);
     } catch (err) {

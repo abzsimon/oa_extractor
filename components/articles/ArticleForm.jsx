@@ -1,7 +1,9 @@
 import { useSelector, useDispatch } from "react-redux";
 import { useState } from "react";
 import { updateArticleField } from "../../reducers/article";
-import ArticleActions from "./ArticleActions"; // ou des placeholders si tu veux
+import ArticleActions from "./ArticleActions";
+import ArticleFormBarriers from "./ArticleFormBarriers";
+import FilteredDatalist from "./ArticleFormSelectedSubfield";
 
 const languageOptions = ["FR", "EN", "ES", "DE", "IT", "PT", "Autre"];
 
@@ -11,21 +13,21 @@ const objectFocusOptions = [
   "SHS en général",
 ];
 const dataTypesOptions = [
-  "Observation en général",
+  "Observation/Observation en général",
   "Observation/Notes",
   "Observation/Photo",
   "Observation/Audio",
   "Observation/Vidéo",
-  "Questionnaire en général",
+  "Questionnaire/Questionnaire en général",
   "Questionnaire/Questions",
   "Questionnaire/Réponses",
   "Questionnaire/Statistiques",
-  "Entretien en général",
+  "Entretien/Entretien en général",
   "Entretien/Audio",
   "Entretien/Vidéo",
   "Entretien/Transcription",
   "Entretien/Grille",
-  "Analyse computationnelle en général",
+  "Analyse computationnelle/Analyse computationnelle en général",
   "Analyse computationnelle/Corpus textuel",
   "Analyse computationnelle/Réseaux",
   "Analyse computationnelle/Logs",
@@ -35,7 +37,7 @@ const dataTypesOptions = [
   "Analyse computationnelle/Code",
   "Analyse computationnelle/Corpus d'images",
   "Analyse computationnelle/Documentation complémentaire",
-  "Archive en général",
+  "Archive/Archive en général",
   "Archive/Sources textuelles",
   "Archive/Sources visuelles (plans, cadastres, relevés archéo...)",
   "Archive/Photographies",
@@ -43,13 +45,13 @@ const dataTypesOptions = [
   "Archive/Mesures numériques",
   "Archive/Tableaux, sculptures, bâti...",
   "Archive/Autres (partitions musicales...)",
-  "Expérimentation en général",
+  "Expérimentation/Expérimentation en général",
   "Expérimentation/Audio",
   "Expérimentation/Vidéo",
   "Expérimentation/Transcriptions",
   "Expérimentation/Notes",
   "Expérimentation/Mesures numériques",
-  "Autres",
+  "Autres/Autres",
   "Autres/Brouillons",
   "Autres/Carnets",
   "Autres/Objet informatique (plateforme, interface...)",
@@ -199,6 +201,24 @@ export default function ArticleForm() {
 
               {/* Mots-clés article */}
               <div>
+                <label className="block font-medium mb-0.5">Sous-champ AJSC pertinent</label>
+                <FilteredDatalist
+                  id="disciplines-list"
+                  value={article.selectedSubfield || ""}
+                  placeholder="Tapez le nom du subfield pour faire apparaître une préselection"
+                  onChange={(val) =>
+                    dispatch(
+                      updateArticleField({
+                        field: "selectedSubfield",
+                        value: val,
+                      })
+                    )
+                  }
+                />
+              </div>
+
+              {/* Mots-clés article */}
+              <div>
                 <label className="block font-medium mb-0.5">Mots-clés</label>
                 <div className="flex flex-col gap-1">
                   <textarea
@@ -300,7 +320,7 @@ export default function ArticleForm() {
               </h3>
               <div className="flex flex-col md:flex-row gap-3 flex-1 text-sm">
                 {/* Colonne gauche */}
-                <div className="flex flex-col justify-between flex-1 w-full md:w-[40%]">
+                <div className="flex flex-col justify-between flex-1 w-full md:w-[37%]">
                   {/* Genre discursif */}
                   <div className="flex flex-col gap-2">
                     <label className="block font-medium mb-0.5">
@@ -368,7 +388,7 @@ export default function ArticleForm() {
                 </div>
 
                 {/* Colonne droite */}
-                <div className="flex flex-col gap-3 w-full md:w-[60%]">
+                <div className="flex flex-col gap-3 w-full md:w-[63%]">
                   {/* Types de données */}
                   <div>
                     <label className="block font-medium mb-2.5">
@@ -478,18 +498,29 @@ export default function ArticleForm() {
                     {positionOnDataOptions.map((opt) => (
                       <label key={opt} className="flex items-center gap-2">
                         <input
-                          type="radio"
+                          type="checkbox"
                           name="positionOnDataOpenAccess"
                           value={opt}
-                          checked={article.positionOnDataOpenAccess === opt}
-                          onChange={(e) =>
+                          checked={
+                            Array.isArray(article.positionOnDataOpenAccess) &&
+                            article.positionOnDataOpenAccess.includes(opt)
+                          }
+                          onChange={() => {
+                            const current = Array.isArray(
+                              article.positionOnDataOpenAccess
+                            )
+                              ? article.positionOnDataOpenAccess
+                              : [];
+                            const next = current.includes(opt)
+                              ? current.filter((v) => v !== opt)
+                              : [...current, opt];
                             dispatch(
                               updateArticleField({
                                 field: "positionOnDataOpenAccess",
-                                value: e.target.value,
+                                value: next,
                               })
-                            )
-                          }
+                            );
+                          }}
                         />
                         {opt}
                       </label>
@@ -562,23 +593,31 @@ export default function ArticleForm() {
                   </div>
                 </div>
 
-                {/* Remarques */}
-                <div className="flex flex-col flex-grow">
-                  <label className="block font-medium mb-0.5">Remarques</label>
-                  <textarea
-                    value={article.remarks}
-                    onChange={(e) =>
-                      dispatch(
-                        updateArticleField({
-                          field: "remarks",
-                          value: e.target.value,
-                        })
-                      )
-                    }
-                    className="flex-grow w-full p-0.5 border rounded resize-none"
-                  />
-                </div>
+                {/* Freins */}
+
+                <ArticleFormBarriers
+                  remarksOnBarriers={article.remarksOnBarriers}
+                />
               </div>
+            </div>
+            {/* Remarques */}
+            <div className="flex flex-col flex-grow">
+              <label className="block font-medium mb-0.5">
+                Remarques générales
+              </label>
+              <textarea
+                value={article.remarks}
+                onChange={(e) =>
+                  dispatch(
+                    updateArticleField({
+                      field: "remarks",
+                      value: e.target.value,
+                    })
+                  )
+                }
+                rows={9}
+                className="flex-grow w-full p-0.5 border rounded resize-none"
+              />
             </div>
           </section>
         );

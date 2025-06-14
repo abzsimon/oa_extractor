@@ -8,9 +8,11 @@ const initialState = {
   role: null,             // "user" ou "admin"
   lastLogin: null,        // date de la dernière connexion
   projectIds: [],         // tableau d'ObjectId (String) des projets
+  
   // Champs temporaires liés à la session de navigation
   selectedArticleId: "",
-  selectedOrcid: null,
+  selectedAuthorId: "",
+  selectedAuthorName: "",
   OaWorksQuery: null,
 };
 
@@ -31,61 +33,60 @@ const userSlice = createSlice({
       // Ensure projectIds is always an array
       state.projectIds = Array.isArray(projectIds) ? projectIds : [];
     },
-    
+
     // Déconnexion : on réinitialise tout
     logout: (state) => {
       // Reset to initial state
       return { ...initialState };
     },
-    
+
     // Update last login time
     updateLastLogin: (state, action) => {
       state.lastLogin = action.payload;
     },
-    
+
     // UI reducers existants :
     setSelectedArticleId: (state, action) => {
       state.selectedArticleId = action.payload || "";
     },
-    
-    setSelectedOrcid: (state, action) => {
-      state.selectedOrcid = action.payload;
+
+    setSelectedAuthorId: (state, action) => {
+      state.selectedAuthorId = action.payload;
     },
-    
+
+    // Nouveau : stocker le nom sélectionné d'un auteur
+    setSelectedAuthorName: (state, action) => {
+      state.selectedAuthorName = action.payload || "";
+    },
+
     setOaWorksQuery: (state, action) => {
       state.OaWorksQuery = action.payload;
     },
-    
+
     setProjectIds: (state, action) => {
       // Ensure we always get an array
       state.projectIds = Array.isArray(action.payload) ? action.payload : [];
     },
-    
-    // Add a project ID to the array
+
     addProjectId: (state, action) => {
       const projectId = action.payload;
       if (projectId && !state.projectIds.includes(projectId)) {
         state.projectIds.push(projectId);
       }
     },
-    
-    // Remove a project ID from the array
+
     removeProjectId: (state, action) => {
       const projectId = action.payload;
       state.projectIds = state.projectIds.filter(id => id !== projectId);
     },
-    
-    // Reset state (useful for debugging persist issues)
+
     resetUserState: () => {
       return { ...initialState };
     },
   },
-  
-  // Add extraReducers to handle persist rehydration
   extraReducers: (builder) => {
     builder
       .addCase('persist/REHYDRATE', (state, action) => {
-        // Handle rehydration - ensure arrays are properly initialized
         if (action.payload?.user) {
           const rehydratedUser = action.payload.user;
           return {
@@ -93,11 +94,13 @@ const userSlice = createSlice({
             ...rehydratedUser,
             projectIds: Array.isArray(rehydratedUser.projectIds) ? rehydratedUser.projectIds : [],
             selectedArticleId: rehydratedUser.selectedArticleId || "",
+            selectedAuthorId: rehydratedUser.selectedAuthorId || null,
+            selectedAuthorName: rehydratedUser.selectedAuthorName || "",
           };
         }
         return state;
       });
-  },
+  }
 });
 
 export const {
@@ -105,7 +108,8 @@ export const {
   logout,
   updateLastLogin,
   setSelectedArticleId,
-  setSelectedOrcid,
+  setSelectedAuthorId,
+  setSelectedAuthorName,
   setOaWorksQuery,
   setProjectIds,
   addProjectId,
