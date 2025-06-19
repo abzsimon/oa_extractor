@@ -56,6 +56,7 @@ export function convertTopicTreeForMongoose(topicTree) {
 }
 
 // transforms topic tree type 2 into topic tree type 1 for reducer. If author already in database, their data will be retrieved from database rather than from open alex, so db topic tree (type 2) needs to be converted back into reducer topic tree (type 1)
+
 export function convertTopicTreeForReducer(topicTree = []) {
   const result = {};
 
@@ -133,26 +134,16 @@ export function getTopFiveFields(topicTree = {}) {
     }));
 }
 
-export function normalizeAuthor(author, source = "db") {
+export function normalizeAuthor(author) {
   if (!author) return {};
 
-  const isAutocomplete = source === "autocomplete";
-  const isReducer = source === "reducer";
-  const isOpenAlex = source === "openalex";
-  const isDb = source === "db";
-
-  const topicTree =
-    isReducer ? author.topic_tree :
-    isOpenAlex && author.topics ? buildTopicTree(author.topics) :
-    {};
-
   return {
-    name: author.display_name || author.name || "Unknown Author",
-    oaId: author.oa_id || author.oaId || author.id || "",
-    orcId: author.orcid || author.orcId || author.external_id || "",
+    display_name: author.display_name || author.name || "Unknown Author",
+    id: author.oa_id || author.oaId || author.id || "",
+    orcid: author.orcid || author.orcId || author.external_id || "",
     institutions: author.institutions || [],
     countries: author.countries || [],
-    top_two_domains: author.top_two_domains || getTopTwoDomains(topicTree),
+    top_two_domains: author.top_two_domains || getTopTwoDomains(author.topic_tree),
     top_five_topics:
       author.top_five_topics ||
       (author.topics || []).slice(0, 5).map((t) => t.display_name || t),
@@ -160,6 +151,5 @@ export function normalizeAuthor(author, source = "db") {
     isInDb: author.isInDb || false,
     works_count: author.works_count || 0,
     cited_by_count: author.cited_by_count || 0,
-    source,
   };
 }

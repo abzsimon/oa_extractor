@@ -16,11 +16,11 @@ const AuthorActions = () => {
   const isLoggedIn = Boolean(token && projectId);
 
   // --- Config API -----------------------------------------------------------
-  const backendUrl = process.env.NEXT_PUBLIC_API_BACKEND;      // ex: http://localhost:3000
+  const backendUrl = process.env.NEXT_PUBLIC_API_BACKEND;     
   const apiUrl     = `${backendUrl}/authors`;
 
   // --- Local state ----------------------------------------------------------
-  const { oa_id, isInDb } = author;
+  const { id, isInDb } = author;
   const [shouldCheckDb, setShouldCheckDb] = useState(false);
 
   // Convertit l’arbre au format backend avant l’envoi
@@ -34,11 +34,11 @@ const AuthorActions = () => {
   // 🔍 Vérifie si l’auteur existe déjà en base
   // -------------------------------------------------------------------------
   useEffect(() => {
-    if (!oa_id || !shouldCheckDb || !isLoggedIn) return;
+    if (!id || !shouldCheckDb || !isLoggedIn) return;
 
     const checkIfAuthorInDb = async () => {
       try {
-        const res = await fetch(`${apiUrl}/${oa_id}?projectId=${projectId}`, {
+        const res = await fetch(`${apiUrl}/${id}?projectId=${projectId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
@@ -62,7 +62,7 @@ const AuthorActions = () => {
     };
 
     checkIfAuthorInDb();
-  }, [shouldCheckDb, oa_id, token, projectId, isLoggedIn, dispatch, author]);
+  }, [shouldCheckDb, id, token, projectId, isLoggedIn, dispatch, author]);
 
   // -------------------------------------------------------------------------
   // Création
@@ -100,8 +100,8 @@ const AuthorActions = () => {
   // Mise à jour
   // -------------------------------------------------------------------------
   const handleUpdate = async () => {
-    if (!oa_id) {
-      alert("oa_id requis pour la mise à jour !");
+    if (!id) {
+      alert("id requis pour la mise à jour !");
       return;
     }
     if (!isLoggedIn) {
@@ -110,7 +110,7 @@ const AuthorActions = () => {
     }
 
     try {
-      const res = await fetch(`${apiUrl}/${oa_id}?projectId=${projectId}`, {
+      const res = await fetch(`${apiUrl}/${id}?projectId=${projectId}`, {
         method: "PUT",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -136,18 +136,18 @@ const AuthorActions = () => {
   // Suppression
   // -------------------------------------------------------------------------
   const handleDelete = async () => {
-    if (!oa_id) {
-      alert("oa_id requis pour la suppression !");
+    if (!id) {
+      alert("id requis pour la suppression !");
       return;
     }
     if (!isLoggedIn) {
       alert("Connecte-toi avant de supprimer un auteur.");
       return;
     }
-    if (!window.confirm(`Supprimer l'auteur ${oa_id} ?`)) return;
+    if (!window.confirm(`Supprimer l'auteur ${id} ?`)) return;
 
     try {
-      const res = await fetch(`${apiUrl}/${oa_id}?projectId=${projectId}`, {
+      const res = await fetch(`${apiUrl}/${id}?projectId=${projectId}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });

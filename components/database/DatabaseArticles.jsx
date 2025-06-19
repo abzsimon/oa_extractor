@@ -3,7 +3,7 @@ import { useSelector } from "react-redux";
 import ArticleModal from "./DatabaseArticlesModal";
 import ArticleCard from "../articles/ArticleCard";
 
-export default function DatabaseArticles() {
+export default function DatabaseArticles({ setAuthors }) {
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(null);
@@ -23,11 +23,11 @@ export default function DatabaseArticles() {
     try {
       const backendUrl = process.env.NEXT_PUBLIC_API_BACKEND;
       const res = await fetch(`${backendUrl}/articles?projectId=${projectId}`, {
-        method: 'GET',
+        method: "GET",
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        }
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
       });
 
       if (!res.ok) {
@@ -51,17 +51,64 @@ export default function DatabaseArticles() {
     setModal(article);
   }, []);
 
+const getArticleAuthors = async (articleId) => {
+  try {
+    const backendUrl = process.env.NEXT_PUBLIC_API_BACKEND;
+
+    // 1. Récupère l'article
+    const res = await fetch(
+      `${backendUrl}/articles/${articleId}?projectId=${projectId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    if (!res.ok) throw new Error(`Erreur article ${res.status}`);
+    const article = await res.json();
+
+    // 2. Récupère les IDs d’auteurs
+    const authorIds = article.authors || [];
+    if (!Array.isArray(authorIds) || authorIds.length === 0) {
+      setAuthors([]);
+      return;
+    }
+
+    // 3. Fetch chaque auteur un par un
+    const authorFetches = authorIds.map((authorId) =>
+      fetch(`${backendUrl}/authors/${authorId}?projectId=${projectId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }).then((res) => res.json())
+    );
+
+    const authorData = await Promise.all(authorFetches);
+    const enriched = authorData.map((a) => ({ ...a, isInDb: true }));
+    setAuthors(enriched);
+  } catch (err) {
+    console.error("Erreur chargement auteurs:", err);
+  }
+};
+
   // Tri par complétion
   const incomplete = articles.filter((a) => (a.completionRate || 0) === 0);
-  const partial = articles.filter((a) => (a.completionRate || 0) > 0 && (a.completionRate || 0) < 100);
+  const partial = articles.filter(
+    (a) => (a.completionRate || 0) > 0 && (a.completionRate || 0) < 100
+  );
   const complete = articles.filter((a) => (a.completionRate || 0) === 100);
 
   const getCurrentArticles = () => {
     switch (currentTab) {
-      case "incomplete": return incomplete;
-      case "partial": return partial;
-      case "complete": return complete;
-      default: return [];
+      case "incomplete":
+        return incomplete;
+      case "partial":
+        return partial;
+      case "complete":
+        return complete;
+      default:
+        return [];
     }
   };
 
@@ -107,7 +154,9 @@ export default function DatabaseArticles() {
       {loading ? (
         <p className="text-gray-500">Loading articles...</p>
       ) : !isLoggedIn ? (
-        <p className="text-gray-500 italic">You must be logged in to view articles.</p>
+        <p className="text-gray-500 italic">
+          You must be logged in to view articles.
+        </p>
       ) : getCurrentArticles().length === 0 ? (
         <p className="text-gray-500 italic">No articles in this category.</p>
       ) : (
@@ -118,17 +167,13 @@ export default function DatabaseArticles() {
               article={article}
               small={true}
               onViewModal={handleViewModal}
+              onClick={() => getArticleAuthors(article.id)}
             />
           ))}
         </div>
       )}
 
-      {modal && (
-        <ArticleModal
-          article={modal}
-          onClose={() => setModal(null)}
-        />
-      )}
+      {modal && <ArticleModal article={modal} onClose={() => setModal(null)} />}
     </div>
   );
 }

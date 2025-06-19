@@ -1,7 +1,5 @@
 import { useState } from "react";
-import { normalizeAuthor } from "./Authors.utils";
 import DbStatusPill from "./DbStatusPill";
-import { useRouter } from "next/router";
 
 const statusLabels = {
   A: "Directeur.ice de recherche ou professeur.e des universités",
@@ -14,26 +12,62 @@ const statusLabels = {
   H: "Non renseigné",
 };
 
-export default function AuthorCard({ author, source = "default", small = false }) {
-  const router = useRouter();
-
+export default function AuthorCard({ author, small = false, onClick }) {
   const {
-    name,
-    oaId,
-    orcId,
-    institutions,
-    countries,
-    top_two_domains,
-    top_five_topics,
-    gender,
-    status,
-    works_count,
-  } = normalizeAuthor(author);
+    display_name = "",
+    id = "",
+    orcid = "",
+    institutions = [],
+    countries = [],
+    top_two_domains = [],
+    top_five_topics = [],
+    gender = "unknown",
+    status = "H",
+    works_count = 0,
+    completionRate = 0,
+  } = author || {};
+
+  const CompletionCircle = ({ rate = 0, size = 32, stroke = 4 }) => {
+    const radius = (size - stroke) / 2;
+    const circumference = 2 * Math.PI * radius;
+    const progress = Math.max(0, Math.min(rate, 100));
+    const offset = circumference - (progress / 100) * circumference;
+    const isZero = progress === 0;
+
+    return (
+      <div className="relative" style={{ width: size, height: size }}>
+        <svg width={size} height={size}>
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            stroke="#e5e7eb"
+            strokeWidth={stroke}
+            fill="none"
+          />
+          {!isZero && (
+            <circle
+              cx={size / 2}
+              cy={size / 2}
+              r={radius}
+              stroke="#22c55e"
+              strokeWidth={stroke}
+              fill="none"
+              strokeDasharray={circumference}
+              strokeDashoffset={offset}
+              strokeLinecap="round"
+              transform={`rotate(-90 ${size / 2} ${size / 2})`}
+            />
+          )}
+        </svg>
+        <div className="absolute inset-0 flex items-center justify-center text-[10px] font-semibold text-gray-700" title={`Completion ${progress}%`}>
+          {progress}%
+        </div>
+      </div>
+    );
+  };
 
   const [showModal, setShowModal] = useState(false);
-
-  const g = gender || "unknown";
-  const s = status || "H";
 
   const genderColor = {
     male: "bg-pink-100 text-pink-700",
@@ -42,40 +76,34 @@ export default function AuthorCard({ author, source = "default", small = false }
     unknown: "bg-gray-100 text-gray-600",
   };
 
-  function handleClick() {
-    if (!oaId) return;
-    // on extrait seulement la partie finale de oaId
-    const id = oaId.split("/").pop();
-    // on navigue vers /Auteurs?id=…&name=…
-    router.push({
-      pathname: "/Authors",
-      query: { id, name },
-    });
-  }
-
   if (small) {
     return (
       <div
-        onClick={handleClick}
+        onClick={onClick}
         className="bg-white border border-gray-200 rounded-lg p-1 shadow-sm hover:shadow-md transition text-sm flex items-center gap-2 cursor-pointer"
       >
-        {source !== "db" && <DbStatusPill oaId={oaId} />}
-        <span className="text-gray-800 truncate">{name}</span>
+        <DbStatusPill id={id} />
+        <span className="text-gray-800 truncate">{display_name}</span>
+        <CompletionCircle rate={completionRate} />
       </div>
     );
   }
 
   return (
     <div
-      onClick={handleClick}
-      className="h-full bg-white border border-gray-200 rounded-lg p-2 shadow-sm hover:shadow-md transition text-sm flex flex-col cursor-pointer"
+      onClick={onClick}
+      className="h-full bg-white border border-gray-200 rounded-lg p-2 shadow-sm hover:shadow-md transition text-sm flex flex-col cursor-pointer min-h-[200px]"
     >
       <div className="flex items-center justify-between">
-        {source !== "db" && <DbStatusPill oaId={oaId} />}
+        <div className="flex gap-2">
+          <DbStatusPill id={id} />
+          <CompletionCircle rate={completionRate} />
+        </div>
+
         <div className="flex flex-wrap gap-1">
-          {oaId && (
+          {id && (
             <a
-              href={oaId}
+              href={`https://openalex.org/authors/${id}`}
               onClick={(e) => e.stopPropagation()}
               target="_blank"
               className="bg-red-100 text-red-800 text-xs px-2 py-0.5 rounded"
@@ -84,9 +112,9 @@ export default function AuthorCard({ author, source = "default", small = false }
               OpenAlex
             </a>
           )}
-          {orcId && (
+          {orcid && (
             <a
-              href={orcId}
+              href={`https://orcid.org/${orcid}`}
               onClick={(e) => e.stopPropagation()}
               target="_blank"
               className="bg-green-100 text-green-800 text-xs px-2 py-0.5 rounded"
@@ -99,20 +127,31 @@ export default function AuthorCard({ author, source = "default", small = false }
       </div>
 
       <div className="flex items-center gap-2 mt-1.5">
-        <h3 className="text-sm font-semibold text-gray-800 truncate">{name}</h3>
+        <h3 className="text-sm font-semibold text-gray-800 text-clip text-wrap">
+          {display_name}
+        </h3>
         <span
-          title={statusLabels[s]}
-          className="text-xs font-medium bg-yellow-50 text-yellow-800 px-2 py-0.5 rounded-full"
+          title={statusLabels[status]}
+          className="text-xs font-medium bg-yellow-50 text-yellow-800 px-4 py-0.5 rounded-full text-clip text-wrap border border-gray-200"
         >
-          {s}
+          {`${status} ${statusLabels[status]}`}
         </span>
       </div>
 
-      {works_count > 0 && (
-        <div className="text-xs text-gray-600 mt-1.5">
-          📚 {works_count} publication{works_count > 1 ? "s" : ""}
+      <div className="flex justify-between">
+        {works_count > 0 && (
+          <div className="text-xs text-gray-600 mt-1.5">
+            📚 {works_count} publication{works_count > 1 ? "s" : ""}
+          </div>
+        )}
+
+        <div className="flex items-start text-xs mt-1.5">
+          <span className="w-20 text-gray-500">Gender:</span>
+          <span className={`px-2 py-0.5 rounded-full font-medium ${genderColor[gender]}`}>
+            {gender === "unknown" ? "N/A" : gender}
+          </span>
         </div>
-      )}
+      </div>
 
       {institutions.length > 0 && (
         <div className="flex items-start text-xs mt-1.5">
@@ -143,19 +182,15 @@ export default function AuthorCard({ author, source = "default", small = false }
         </div>
       )}
 
-      <div className="flex items-start text-xs mt-1.5">
-        <span className="w-20 text-gray-500">Gender:</span>
-        <span className={`px-2 py-0.5 rounded-full font-medium ${genderColor[g]} truncate max-w-[6ch]`}>
-          {g === "unknown" ? "N/A" : g}
-        </span>
-      </div>
-
       {top_two_domains.length > 0 && (
         <div className="mt-1.5">
           <h4 className="text-xs font-semibold text-gray-500">Domains</h4>
           <div className="flex flex-wrap gap-1 mt-0.5">
             {top_two_domains.map((d, i) => (
-              <span key={i} className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-xs">
+              <span
+                key={i}
+                className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-xs"
+              >
                 {d.name}
                 <span className="ml-1 bg-blue-100 text-blue-800 px-1 rounded-full">
                   {d.percentage}%
@@ -168,10 +203,17 @@ export default function AuthorCard({ author, source = "default", small = false }
 
       {top_five_topics.length > 0 && (
         <div className="mt-1.5">
-          <h4 className="text-xs font-semibold text-gray-500">Topics</h4>
-          <div className="flex flex-wrap gap-1 mt-0.5">
+          <div className="w-full break-words">
+            <span className="text-xs font-semibold text-gray-500 mr-2">
+              Topics
+            </span>
             {top_five_topics.slice(0, 3).map((t, i) => (
-              <span key={i} className="bg-gray-100 text-gray-700 px-2 py-0.5 rounded text-xs">
+              <span
+                key={i}
+                className={`mr-1 ${
+                  i % 2 === 0 ? "text-rose-400 italic" : "text-gray-500"
+                } break-words`}
+              >
                 {t.display_name || t}
               </span>
             ))}
@@ -188,7 +230,9 @@ export default function AuthorCard({ author, source = "default", small = false }
             className="bg-white rounded-lg shadow-lg w-full max-w-md p-6"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 className="text-lg font-semibold text-gray-800 mb-4">All Institutions</h2>
+            <h2 className="text-lg font-semibold text-gray-800 mb-4">
+              All Institutions
+            </h2>
             <ul className="space-y-2 max-h-60 overflow-y-auto pr-1 text-sm text-gray-700">
               {institutions.map((inst, i) => (
                 <li key={i} className="border-b border-gray-200 pb-1">
@@ -213,3 +257,4 @@ export default function AuthorCard({ author, source = "default", small = false }
     </div>
   );
 }
+  

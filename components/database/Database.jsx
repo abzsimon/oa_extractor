@@ -19,6 +19,8 @@ export default function Database() {
   const token = useSelector((s) => s.user.token);
   const projectId = useSelector((s) => s.user.projectIds?.[0]);
   const projectName = useSelector((s) => s.user.projectName);
+  const [authors, setAuthors] = useState([]);
+  console.log("📌 authors state changed", authors);
 
   // Onglet actif : "data" | "authorsStats" | "articlesStats"
   const [panel, setPanel] = useState("data");
@@ -91,11 +93,11 @@ export default function Database() {
           {panel === "data" && (
             <div className="grid grid-cols-1 xl:grid-cols-5 gap-6 w-full">
               <div className="col-span-5 xl:col-span-2 space-y-4">
-                <DatabaseAuthors />
+                <DatabaseAuthors authors={authors} />
               </div>
 
               <div className="col-span-5 xl:col-span-3 space-y-4">
-                <DatabaseArticles />
+                <DatabaseArticles setAuthors={setAuthors} />
               </div>
             </div>
           )}

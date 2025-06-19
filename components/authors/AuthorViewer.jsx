@@ -1,11 +1,10 @@
+// ./components/AuthorViewer.js
 import { useSelector, useDispatch } from "react-redux";
-import { useRouter } from "next/router";
-import { useEffect } from "react";
 import TopicTreeExpandable from "./TopicTreeExpandable";
-import { updateAuthorField, setAuthor } from "../../reducers/author";
-import AuthorActions from "./AuthorActions";
 import DbStatusPill from "./DbStatusPill";
 import AuthorWorksBrowser from "./AuthorWorksCarousel";
+import AuthorActions from "./AuthorActions";
+import { updateAuthorField } from "../../reducers/author";
 
 /* ----------------------------------------------------------------------- */
 /* Mapping lettre → libellé complet                                        */
@@ -21,248 +20,315 @@ const statusLabels = {
   H: "H - Non renseigné",
 };
 
-export default function AuthorEditor() {
-  const author = useSelector((state) => state.author);
+export default function AuthorViewer() {
   const dispatch = useDispatch();
-  const router = useRouter();
-  const { oa_id } = router.query;
 
-  // 🧠 Initialisation pour les auteurs manuels qui n'existent pas encore
-  useEffect(() => {
-    if (oa_id && oa_id.startsWith("MA-") && (!author || author.oa_id !== oa_id)) {
-      // Créer un auteur vide pour l'édition/création
-      dispatch(setAuthor({
-        oa_id: oa_id,
-        display_name: "",
-        orcid: "",
-        cited_by_count: 0,
-        works_count: 0,
-        gender: "",
-        status: "",
-        annotation: "",
-        isInDb: false, // Pas encore en base
-        // Pas de données OpenAlex pour un auteur manuel
-        top_two_domains: [],
-        top_five_topics: [],
-        topic_tree: {},
-        doctypes: [],
-        source: "manual"
-      }));
-    }
-  }, [oa_id, author, dispatch]);
+  const a = useSelector((s) => s.author);
 
-  if (!author || !author.oa_id) {
+  if (!a || !a.id) {
     return (
       <div className="text-center py-8">
-        <p className="text-gray-500 italic">
-          Chargement de l'auteur...
-        </p>
+        <p className="text-gray-500 italic">Chargement de l'auteur...</p>
       </div>
     );
   }
 
-  // 🧠 Détection si c'est un auteur manuel
-  const isManualAuthor = author.oa_id && author.oa_id.startsWith("MA-");
-  const isNewAuthor = !author.isInDb;
+  // Logique de permissions clarifiée
+  const isOpenAlex = a.source === "openalex";
+  const isManual = a.source === "manual";
+  const isNewOpenAlex = isOpenAlex && a.isInDb === false;
+  const isExistingOpenAlex = isOpenAlex && a.isInDb === true;
+  const isExistingManual = isManual && a.isInDb === true; // toujours vrai pour manual
+
+  // Permissions d'édition
+  const canEditIdentityFields = isExistingManual; // seulement pour les auteurs manuels
+  const canEditBasicFields =
+    isExistingManual || isNewOpenAlex || isExistingOpenAlex; // gender, status, annotation
+
+  // Affichage des données OpenAlex
+  const showOpenAlexData = isOpenAlex;
+  // Si l'auteur est en base, on convertit son topic_tree (Mongo) en structure du reducer
+  const topicTree = a.topic_tree;
 
   const handleInput = (field) => (e) => {
     dispatch(updateAuthorField({ field, value: e.target.value }));
   };
 
+  // Status banner logic
+  const getBannerConfig = () => {
+    if (isNewOpenAlex) {
+      return {
+        className: "bg-blue-50 border-blue-200 text-blue-800",
+        text: "👤🆕 Nouvel auteur OpenAlex – complétez gender/status et sauvegardez",
+      };
+    }
+    if (isExistingManual) {
+      return {
+        className: "bg-yellow-50 border-yellow-200 text-yellow-800",
+        text: "📝💾 Auteur manuel persisté en DB – toutes modifications autorisées",
+      };
+    }
+    // isExistingOpenAlex
+    return {
+      className: "bg-green-50 border-green-200 text-green-800",
+      text: "👤💾 Auteur OpenAlex persisté en DB – seuls gender/status/annotation modifiables",
+    };
+  };
+
+  const bannerConfig = getBannerConfig();
+
   return (
-    <div className="space-y-4 text-sm text-gray-800">
-      {/* 🔔 Indicateur statut */}
-      <div className={`border rounded-lg p-3 ${
-        isNewAuthor 
-          ? "bg-blue-50 border-blue-200" 
-          : isManualAuthor 
-            ? "bg-yellow-50 border-yellow-200" 
-            : "bg-green-50 border-green-200"
-      }`}>
-        <p className={`font-medium ${
-          isNewAuthor 
-            ? "text-blue-800" 
-            : isManualAuthor 
-              ? "text-yellow-800" 
-              : "text-green-800"
-        }`}>
-          {isNewAuthor 
-            ? "🆕 Nouvel auteur - Remplissez les informations et sauvegardez"
-            : isManualAuthor 
-              ? "📝 Auteur manuel - Toutes les informations sont éditables"
-              : "👤 Auteur OpenAlex - Informations enrichies automatiquement"
-          }
-        </p>
+    <div className="space-y-6 text-sm text-gray-800">
+      {/* Statut banner */}
+      <div className={`border rounded-lg p-3 ${bannerConfig.className}`}>
+        <p className="font-medium">{bannerConfig.text}</p>
       </div>
 
-      {/* 🧠 Grid en 3 colonnes */}
+      {/* Main grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Colonne 1 : Infos générales */}
+        {/* Column 1: Identity */}
         <div className="space-y-3">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Nom *
             </label>
-            <div className="flex items-center gap-3">
-              {isManualAuthor || isNewAuthor ? (
-                <input
-                  type="text"
-                  value={author.display_name || ""}
-                  onChange={handleInput("display_name")}
-                  className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm"
-                  placeholder="Nom complet de l'auteur"
-                  required
-                />
-              ) : (
-                <span className="flex-1">{author.display_name}</span>
-              )}
-              <DbStatusPill
-                key={author.oa_id + (author.isInDb ? "-in" : "-out")}
-                oaId={author.oa_id}
+            {canEditIdentityFields ? (
+              <input
+                type="text"
+                value={a.display_name || ""}
+                onChange={handleInput("display_name")}
+                className="w-full border rounded px-3 py-2"
               />
-            </div>
+            ) : (
+              <span className="block w-full border rounded px-3 py-2 bg-gray-100">
+                {a.display_name || a.name || "Non renseigné"}
+              </span>
+            )}
+            <DbStatusPill id={a.id} />
           </div>
-          
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               OA ID
             </label>
-            <input
-              type="text"
-              value={author.oa_id}
-              className="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-gray-100"
-              disabled
-            />
+            <span className="block w-full border rounded px-3 py-2 bg-gray-100">
+              {a.id}
+            </span>
           </div>
-          
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               ORCID
             </label>
-            {isManualAuthor || isNewAuthor ? (
+            {canEditIdentityFields ? (
               <input
                 type="text"
-                value={author.orcid || ""}
+                value={a.orcid || ""}
                 onChange={handleInput("orcid")}
-                className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-                placeholder="0000-0000-0000-0000"
-                pattern="\\d{4}-\\d{4}-\\d{4}-\\d{4}"
+                className="w-full border rounded px-3 py-2"
               />
             ) : (
-              <input
-                type="text"
-                value={author.orcid || "Non renseigné"}
-                className="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-gray-100"
-                disabled
-              />
+              <span className="block w-full border rounded px-3 py-2 bg-gray-100">
+                {a.orcid || a.orcId || "Non renseigné"}
+              </span>
             )}
-          </div> 
+          </div>
 
-          {/* Domains - uniquement pour auteurs OpenAlex */}
-          {!isManualAuthor && !isNewAuthor && author.top_two_domains?.length > 0 && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Top 2 Domains
-              </label>
-              <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                {author.top_two_domains.map((d, i) => {
-                  const isHighest =
-                    d.percentage ===
-                    Math.max(...author.top_two_domains.map((x) => x.percentage));
-                  const percentageBg = isHighest ? "#d0f5d8" : "#fddede";
-                  const percentageColor = isHighest ? "#2e7d32" : "#c62828";
-
-                  return (
-                    <div
-                      key={i}
-                      style={{
-                        display: "flex",
-                        borderRadius: "999px",
-                        overflow: "hidden",
-                      }}
-                    >
-                      <div
-                        style={{
-                          backgroundColor: "#f0f0f0",
-                          color: "#333",
-                          padding: "6px 10px",
-                          fontSize: "0.875rem",
-                          fontWeight: 500,
-                          borderTopLeftRadius: "999px",
-                          borderBottomLeftRadius: "999px",
-                        }}
-                      >
-                        {d.name}
-                      </div>
-                      <div
-                        style={{
-                          backgroundColor: percentageBg,
-                          color: percentageColor,
-                          padding: "6px 10px",
-                          fontSize: "0.875rem",
-                          fontWeight: 500,
-                          borderTopRightRadius: "999px",
-                          borderBottomRightRadius: "999px",
-                        }}
-                      >
-                        {d.percentage}%
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+          {showOpenAlexData && (
+            <>
+              <p>
+                <strong>Cité·e·par :</strong> {a.cited_by_count || 0}
+              </p>
+              <p>
+                <strong>Publications :</strong> {a.works_count || 0}
+              </p>
+              {a.overall_works && (
+                <a
+                  href={a.overall_works}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 underline"
+                >
+                  Voir toutes les œuvres
+                </a>
+              )}
+            </>
           )}
         </div>
 
-        {/* Colonne 2 : Informations éditables */}
+        {/* Column 2: Demographics */}
         <div className="space-y-3">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Genre
             </label>
-            <select
-              value={author.gender || ""}
-              onChange={handleInput("gender")}
-              className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-            >
-              <option value="">-- Choisir --</option>
-              <option value="female">Femme</option>
-              <option value="male">Homme</option>
-              <option value="nonbinary">Non-défini</option>
-            </select>
+            {canEditBasicFields ? (
+              <select
+                value={a.gender || ""}
+                onChange={handleInput("gender")}
+                className="w-full border rounded px-3 py-2"
+              >
+                <option value="">-- Choisir --</option>
+                <option value="female">Femme</option>
+                <option value="male">Homme</option>
+                <option value="nonbinary">Non-défini</option>
+              </select>
+            ) : (
+              <span className="block w-full border rounded px-3 py-2 bg-gray-100">
+                {a.gender || "Non renseigné"}
+              </span>
+            )}
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Statut
             </label>
-            <select
-              value={author.status || ""}
-              onChange={handleInput("status")}
-              className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-            >
-              <option value="">-- Choisir --</option>
-              {Object.entries(statusLabels).map(([code, label]) => (
-                <option key={code} value={code}>
-                  {label}
-                </option>
-              ))}
-            </select>
+            {canEditBasicFields ? (
+              <select
+                value={a.status || ""}
+                onChange={handleInput("status")}
+                className="w-full border rounded px-3 py-2"
+              >
+                <option value="">-- Choisir --</option>
+                {Object.entries(statusLabels).map(([code, label]) => (
+                  <option key={code} value={code}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <span className="block w-full border rounded px-3 py-2 bg-gray-100">
+                {a.status
+                  ? `${a.status} – ${statusLabels[a.status]}`
+                  : "Non renseigné"}
+              </span>
+            )}
           </div>
-
-          {/* Top topics - uniquement pour auteurs OpenAlex */}
-          {!isManualAuthor && !isNewAuthor && author.top_five_topics?.length > 0 && (
+          {showOpenAlexData && a.top_two_domains?.length > 0 ? (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Top 5 Topics
-              </label>
+              <h2 className="font-semibold">Top 2 Domaines</h2>
               <div className="flex flex-wrap gap-2">
-                {author.top_five_topics.map((t, i) => (
+                {a.top_two_domains.map((d, i) => (
                   <span
                     key={i}
-                    className="px-3 py-1 text-sm font-medium text-gray-800"
-                    style={{ backgroundColor: "#f0f0f0", borderRadius: "999px" }}
+                    className="px-3 py-1 bg-gray-100 rounded-full text-xs"
+                  >
+                    {d.name} ({d.percentage}%)
+                  </span>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Top 2 Domaines
+              </label>
+              {canEditBasicFields ? (
+                <div className="space-y-2">
+                  {(a.top_two_domains || []).map((d, i) => (
+                    <div key={i} className="flex gap-2 items-center">
+                      <input
+                        type="text"
+                        value={d.name || ""}
+                        onChange={(e) => {
+                          const updated = [...a.top_two_domains];
+                          updated[i] = { ...updated[i], name: e.target.value };
+                          dispatch(
+                            updateAuthorField({
+                              field: "top_two_domains",
+                              value: updated,
+                            })
+                          );
+                        }}
+                        placeholder="Nom du domaine"
+                        className="flex-1 border rounded px-3 py-2"
+                      />
+                      <input
+                        type="number"
+                        value={d.percentage || ""}
+                        onChange={(e) => {
+                          const updated = [...a.top_two_domains];
+                          updated[i] = {
+                            ...updated[i],
+                            percentage: Number(e.target.value),
+                          };
+                          dispatch(
+                            updateAuthorField({
+                              field: "top_two_domains",
+                              value: updated,
+                            })
+                          );
+                        }}
+                        placeholder="Pourcentage"
+                        min="0"
+                        max="100"
+                        className="w-20 border rounded px-3 py-2"
+                      />
+                      <span className="text-sm text-gray-500">%</span>
+                      <button
+                        onClick={() => {
+                          const updated = a.top_two_domains.filter(
+                            (_, idx) => idx !== i
+                          );
+                          dispatch(
+                            updateAuthorField({
+                              field: "top_two_domains",
+                              value: updated,
+                            })
+                          );
+                        }}
+                        className="px-2 py-1 text-red-600 hover:bg-red-50 rounded"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                  {(a.top_two_domains || []).length < 2 && (
+                    <button
+                      onClick={() => {
+                        const updated = [
+                          ...(a.top_two_domains || []),
+                          { name: "", percentage: 0 },
+                        ];
+                        dispatch(
+                          updateAuthorField({
+                            field: "top_two_domains",
+                            value: updated,
+                          })
+                        );
+                      }}
+                      className="text-sm text-blue-600 hover:text-blue-800"
+                    >
+                      + Ajouter un domaine
+                    </button>
+                  )}
+                </div>
+              ) : (
+                a.top_two_domains?.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {a.top_two_domains.map((d, i) => (
+                      <span
+                        key={i}
+                        className="px-3 py-1 bg-gray-100 rounded-full text-xs"
+                      >
+                        {d.name} ({d.percentage}%)
+                      </span>
+                    ))}
+                  </div>
+                )
+              )}
+            </div>
+          )}
+
+          {showOpenAlexData && a.top_five_topics?.length > 0 && (
+            <div>
+              <h2 className="font-semibold">Top 5 Thèmes</h2>
+              <div className="flex flex-wrap gap-2">
+                {a.top_five_topics.map((t, i) => (
+                  <span
+                    key={i}
+                    className="px-3 py-1 bg-gray-100 rounded-full text-xs"
                   >
                     {t}
                   </span>
@@ -272,71 +338,126 @@ export default function AuthorEditor() {
           )}
         </div>
 
-        {/* Colonne 3 : Topic Tree ou Remarques */}
-        <div>
-          {!isManualAuthor && !isNewAuthor && author.topic_tree && Object.keys(author.topic_tree).length > 0 ? (
-            <>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Topic Tree
-              </label>
-              <div className="max-h-64 overflow-auto border border-gray-200 rounded p-2 bg-gray-50">
-                <TopicTreeExpandable topicTree={author.topic_tree} />
-              </div>
+        {/* Column 3: Topic Tree & Docs */}
+        <div className="space-y-3">
+          {showOpenAlexData &&
+            topicTree &&
+            Object.keys(topicTree).length > 0 && (
+              <>
+                <h2 className="font-semibold">Topic Tree</h2>
+                <TopicTreeExpandable topicTree={topicTree} />
+              </>
+            )}
 
-              {/* Types de documents */}
-              {author.doctypes?.length > 0 && (
-                <div className="mt-4">
-                  <h4 className="font-semibold text-sm">Types de documents</h4>
-                  <ul className="flex flex-wrap gap-2 text-xs mt-1">
-                    {author.doctypes.map((d, i) => (
-                      <li key={i} className="bg-gray-100 px-2 py-1 rounded">
-                        {d.name}: {d.quantity}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </>
-          ) : (
+          {showOpenAlexData && a.doctypes?.length > 0 && (
+            <div>
+              <h2 className="font-semibold">Types de documents</h2>
+              <ul className="flex flex-wrap gap-2 text-xs">
+                {a.doctypes.map((d, i) => (
+                  <li key={i} className="bg-gray-100 px-2 py-1 rounded">
+                    {d.name}: {d.quantity}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {showOpenAlexData && a.study_works?.length > 0 && (
+            <div>
+              <h2 className="font-semibold">Œuvres d'étude</h2>
+              <ul className="list-disc ml-5">
+                {a.study_works.map((w, i) => (
+                  <li key={i}>{w.title || w.id}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {canEditIdentityFields && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Remarques
+                Top 5 topics
               </label>
-              <textarea
-                value={author.annotation || ""}
-                onChange={handleInput("annotation")}
-                rows={8}
-                className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-                placeholder="Ajouter un commentaire, une note, des informations supplémentaires..."
-              />
+              <div className="space-y-2">
+                {(a.top_five_topics || []).map((t, i) => (
+                  <div key={i} className="flex gap-2 items-center">
+                    <input
+                      type="text"
+                      value={t || ""}
+                      onChange={(e) => {
+                        const updated = [...a.top_five_topics];
+                        updated[i] = e.target.value;
+                        dispatch(
+                          updateAuthorField({
+                            field: "top_five_topics",
+                            value: updated,
+                          })
+                        );
+                      }}
+                      placeholder={`topic ${i + 1}`}
+                      className="flex-1 border rounded px-3 py-2"
+                    />
+                    <button
+                      onClick={() => {
+                        const updated = a.top_five_topics.filter(
+                          (_, idx) => idx !== i
+                        );
+                        dispatch(
+                          updateAuthorField({
+                            field: "top_five_topics",
+                            value: updated,
+                          })
+                        );
+                      }}
+                      className="px-2 py-1 text-red-600 hover:bg-red-50 rounded"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+
+                {(a.top_five_topics || []).length < 5 && (
+                  <button
+                    onClick={() => {
+                      const updated = [...(a.top_five_topics || []), ""];
+                      dispatch(
+                        updateAuthorField({
+                          field: "top_five_topics",
+                          value: updated,
+                        })
+                      );
+                    }}
+                    className="text-sm text-blue-600 hover:text-blue-800"
+                  >
+                    + Ajouter un thème
+                  </button>
+                )}
+              </div>
             </div>
           )}
         </div>
       </div>
 
-      {/* Remarques pour auteurs OpenAlex */}
-      {!isManualAuthor && !isNewAuthor && (
-        <div className="border border-gray-300 rounded-lg p-3 bg-gray-50">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+      {/* Remarks/Edit */}
+      {canEditBasicFields && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
             Remarques
           </label>
           <textarea
-            value={author.annotation || ""}
+            rows={4}
+            value={a.annotation || ""}
             onChange={handleInput("annotation")}
-            rows={3}
-            className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-            placeholder="Ajouter un commentaire ou une note"
+            className="w-full border rounded px-3 py-2"
           />
         </div>
       )}
 
-      {/* Actions CRUD */}
-      <AuthorActions />
+      {/* Actions - afficher pour tous les cas éditables */}
+      {(canEditIdentityFields || canEditBasicFields) && <AuthorActions />}
 
-      {/* Works Browser - uniquement pour auteurs OpenAlex */}
-      {!isManualAuthor && !isNewAuthor && (
-        <AuthorWorksBrowser authorId={author.oa_id} />
-      )}
+      {/* Works Carousel */}
+      {showOpenAlexData && <AuthorWorksBrowser authorId={a.id} />}
     </div>
   );
 }

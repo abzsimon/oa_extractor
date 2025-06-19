@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 
-const DbStatusPill = ({ oaId }) => {
+const DbStatusPill = ({ id }) => {
   // --- Auth depuis Redux ----------------------------------------------------
   const token      = useSelector((s) => s.user.token);
   const projectId  = useSelector((s) => s.user.projectIds?.[0]);
@@ -20,7 +20,7 @@ const DbStatusPill = ({ oaId }) => {
   // Vérifie la présence en DB (seulement si connecté)
   // -------------------------------------------------------------------------
   useEffect(() => {
-    if (!isLoggedIn || !oaId) {
+    if (!isLoggedIn || !id) {
       setStatus("unknown");
       return;
     }
@@ -29,7 +29,7 @@ const DbStatusPill = ({ oaId }) => {
       setLoading(true);
       try {
         const res = await fetch(
-          `${apiUrl}/${oaId}?projectId=${projectId}`,
+          `${apiUrl}/${id}?projectId=${projectId}`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
         setStatus(res.ok ? "inDb" : "notInDb");
@@ -42,12 +42,12 @@ const DbStatusPill = ({ oaId }) => {
     };
 
     checkDb();
-  }, [oaId, isLoggedIn, token, projectId, apiUrl]);
+  }, [id, isLoggedIn, token, projectId, apiUrl]);
 
   // -------------------------------------------------------------------------
   // Rendu
   // -------------------------------------------------------------------------
-  if (!oaId) return null;
+  if (!id) return null;
 
   // Non connecté → invite à se connecter
   if (!isLoggedIn) {

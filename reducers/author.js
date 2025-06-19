@@ -25,6 +25,7 @@ const initialState = {
   gender: "",
   status: "",
   annotation: "",
+  completionRate: 0,
 };
 
 const authorSlice = createSlice({
