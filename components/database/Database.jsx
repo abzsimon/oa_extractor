@@ -1,26 +1,36 @@
 "use client";
+// imports react
 import React, { useState } from "react";
 import { useSelector } from "react-redux";
 import {
   Database as DatabaseIcon,
   Users,
-  FileText,
+  // FileText,
   BarChart3,
-  Activity,
-  Download,
+  // Activity,
+  // Download,
 } from "lucide-react";
+
 import DatabaseAuthors from "./DatabaseAuthors";
 import DatabaseArticles from "./DatabaseArticles";
 import BackupButton from "../BackupButton";
 import ArticleStatsDashboard from "./ArticleStats";
 import AuthorStatsDashboard from "./AuthorStats";
+import { useDispatch } from "react-redux";
+import { clearAuthor } from "../../reducers/author";
+import { clearArticle } from "../../reducers/article";
 
 export default function Database() {
   const token = useSelector((s) => s.user.token);
   const projectId = useSelector((s) => s.user.projectIds?.[0]);
   const projectName = useSelector((s) => s.user.projectName);
-  const [authors, setAuthors] = useState([]);
-  console.log("📌 authors state changed", authors);
+
+  const dispatch = useDispatch();
+
+  const handleReset = () => {
+    dispatch(clearAuthor());
+    dispatch(clearArticle());
+  };
 
   // Onglet actif : "data" | "authorsStats" | "articlesStats"
   const [panel, setPanel] = useState("data");
@@ -59,7 +69,7 @@ export default function Database() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
       <div className="max-w-full mx-auto px-4 py-4">
         {/* Navigation par onglets */}
-        <div className="flex justify-center gap-4 mb-6">
+        <div className="flex justify-center items-center gap-4 mb-6 relative">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             return (
@@ -91,14 +101,36 @@ export default function Database() {
         {/* Contenu principal */}
         <div className="relative">
           {panel === "data" && (
-            <div className="grid grid-cols-1 xl:grid-cols-5 gap-6 w-full">
-              <div className="col-span-5 xl:col-span-2 space-y-4">
-                <DatabaseAuthors authors={authors} />
+            <div className="relative">
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 w-full">
+                <div className="space-y-4">
+                  <DatabaseAuthors />
+                </div>
+                <div className="space-y-4">
+                  <DatabaseArticles />
+                </div>
               </div>
 
-              <div className="col-span-5 xl:col-span-3 space-y-4">
-                <DatabaseArticles setAuthors={setAuthors} />
-              </div>
+              {/* Bouton reset flottant à 40% */}
+              <button
+                onClick={handleReset}
+                title="Réinitialiser la sélection"
+                className="absolute top-4 left-[50%] -translate-x-1/2 z-10 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white shadow-lg hover:shadow-xl w-12 h-12 rounded-full flex items-center justify-center hover:scale-105 transition-all duration-200"
+              >
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                  />
+                </svg>
+              </button>
             </div>
           )}
 

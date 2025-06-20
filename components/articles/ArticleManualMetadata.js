@@ -2,6 +2,12 @@ import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { setArticle, clearArticle } from "../../reducers/article";
 import { Search, Plus, X } from "lucide-react";
+import {
+  buildTopicTree,
+  convertTopicTreeForMongoose,
+  getTopFiveFields,
+  getTopTwoDomains,
+} from "../authors/Authors.utils";
 
 function ArticleManualMetadata() {
   // État pour l'article saisi manuellement
@@ -129,7 +135,7 @@ function ArticleManualMetadata() {
   const handleArticleSubmit = async () => {
     if (articleQuery.length < 2) return;
     // On reset le reducer article pour dégager l'ArticleForm de l'élément parent qui perturbe la saisie
-    dispatch(clearArticle())
+    dispatch(clearArticle());
     // On efface les anciens résultats et on marque qu'une recherche est en cours
     setArticleSearchResults([]);
     setHasSearchedArticle(false);
@@ -240,12 +246,12 @@ function ArticleManualMetadata() {
   /* -------------- AJOUTER UN AUTEUR ------------------ */
   /*  - appeler addAuthor() pour la saisie manuelle
     - appeler addAuthor(authorObj) pour un auteur OpenAlex sélectionné */
-  const addAuthor = (author) => {
-    const src = author ?? manualAuthor; // priorité au paramètre
+  const addAuthor = async (author) => {
+    const src = author ?? manualAuthor;
     const name = (src.display_name || "").trim();
-    if (!name) return; // rien à ajouter
+    if (!name) return;
 
-    const id = src.id // id OpenAlex dispo ?
+    const id = src.id
       ? stripOpenAlexId(src.id)
       : "MA-" +
         Math.random().toString(16).slice(2, 10).padEnd(8, "0").toUpperCase();
@@ -255,13 +261,70 @@ function ArticleManualMetadata() {
       authors: [...prev.authors, id],
       authorsFullNames: [...prev.authorsFullNames, name],
     }));
-    setStagedAuthors((prev) => [
-      ...prev,
-      { id, display_name: name, source: src.source },
-    ]);
+
+    // ⚡ Si auteur OpenAlex, enrichir
+    if (src.source === "openalex") {
+      try {
+        const res = await fetch(`https://api.openalex.org/authors/${id}`);
+        const data = await res.json();
+
+        const typesRes = await fetch(`${data.works_api_url}&group_by=type`);
+        const typesData = await typesRes.json();
+        const doctypes = (typesData.group_by || [])
+          .filter((d) => d.count > 0)
+          .map((d) => ({ name: d.key_display_name, quantity: d.count }));
+
+        const topic_tree = buildTopicTree(data.topics || []);
+        const top_two_domains = getTopTwoDomains(topic_tree);
+        const top_five_fields = getTopFiveFields(topic_tree);
+        const top_five_topics = (data.topics || [])
+          .slice(0, 5)
+          .map((t) => t.display_name);
+
+        const structuredAuthor = {
+          id,
+          orcid: data.orcid?.replace("https://orcid.org/", "") || "",
+          display_name: name,
+          cited_by_count: data.cited_by_count || 0,
+          works_count: data.works_count || 0,
+          institutions: data.last_known_institution?.display_name
+            ? [data.last_known_institution.display_name]
+            : [],
+          countries: data.last_known_institution?.country_code
+            ? [data.last_known_institution.country_code.toUpperCase()]
+            : [],
+          overall_works: data.works_api_url,
+          doctypes,
+          study_works: [],
+          top_five_topics,
+          top_five_fields,
+          top_two_domains,
+          topic_tree : convertTopicTreeForMongoose(topic_tree),
+          gender: "",
+          status: "",
+          annotation: "",
+          isInDb: false,
+          source: "openalex",
+        };
+
+        setStagedAuthors((prev) => [...prev, structuredAuthor]);
+      } catch (err) {
+        console.error("Enrichissement OpenAlex échoué :", err);
+        // Fallback minimal
+        setStagedAuthors((prev) => [
+          ...prev,
+          { id, display_name: name, source: src.source },
+        ]);
+      }
+    } else {
+      // Auteur manuel
+      setStagedAuthors((prev) => [
+        ...prev,
+        { id, display_name: name, source: src.source },
+      ]);
+    }
 
     if (!author) {
-      // si saisie manuelle
       setManualAuthor({ source: "manual", id: "", display_name: "" });
     }
   };
@@ -478,9 +541,9 @@ function ArticleManualMetadata() {
         </div>
 
         {/* Gestion auteurs */}
-        
+
         <div className="bg-white rounded p-3 border">
-                    <label className="text-[12px] text-gray-500 font-medium">
+          <label className="text-[12px] text-gray-500 font-medium">
             Entrer le nom de l'auteur et vérifier si il existe déjà en 💾
           </label>
           {/* Recherche auteur */}
@@ -534,9 +597,10 @@ function ArticleManualMetadata() {
           )}
 
           {/* Ajout manuel */}
-                      <label className="text-[12px] text-gray-500 font-medium mb-2">
-              Si vous ne trouvez aucun auteur en base de données, vous pouvez l'ajouter manuellement ici
-            </label>
+          <label className="text-[12px] text-gray-500 font-medium mb-2">
+            Si vous ne trouvez aucun auteur en base de données, vous pouvez
+            l'ajouter manuellement ici
+          </label>
           <div className="flex gap-2 my-1">
             <input
               value={manualAuthor.display_name}
@@ -604,11 +668,11 @@ function ArticleManualMetadata() {
           }}
           className="w-full py-2 bg-gradient-to-r from-green-500 to-blue-500 text-white rounded font-medium hover:from-green-600 hover:to-blue-600"
         >
-          {manualArticle.isInDb ? "🔥Poursuivre l'édition" : "🔥Poursuivre l'ajout"}
+          {manualArticle.isInDb
+            ? "🔥Poursuivre l'édition"
+            : "🔥Poursuivre l'ajout"}
         </button>
-                <span className="text-[12px] text-gray-500 font-medium mb-2">
-              
-            </span>
+        <span className="text-[12px] text-gray-500 font-medium mb-2"></span>
       </div>
     </div>
   );

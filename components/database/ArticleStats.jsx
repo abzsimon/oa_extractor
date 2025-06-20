@@ -91,8 +91,9 @@ const HorizontalBars = ({ data, color }) => {
   );
 };
 
-const trim = (s, max = 50) => (s.length > max ? s.slice(0, max) + "…" : s);
-
+const trim = (s, max = 50) =>
+  typeof s === "string" && s.length > max ? s.slice(0, max) + "..." : s || "";
+  
 // ---------------------------------------------------------------------------
 export default function ArticleStatsDashboard({
   token,

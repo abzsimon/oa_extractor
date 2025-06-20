@@ -1,10 +1,15 @@
+// import des fonctions react
 import { useEffect, useState, useCallback } from "react";
 import { useSelector } from "react-redux";
-import ArticleModal from "./DatabaseArticlesModal";
+import { setArticle } from "../../reducers/article";
+import { useDispatch } from "react-redux";
+
 import ArticleCard from "../articles/ArticleCard";
+import ArticleModal from "./DatabaseArticlesModal";
+import { setSelectedArticleId } from "../../reducers/user";
 
 export default function DatabaseArticles({ setAuthors }) {
-  const [articles, setArticles] = useState([]);
+  const dispatch = useDispatch();
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(null);
   const [currentTab, setCurrentTab] = useState("incomplete");
@@ -13,6 +18,18 @@ export default function DatabaseArticles({ setAuthors }) {
   const projectId = useSelector((state) => state.user.projectIds?.[0]);
   const isLoggedIn = Boolean(token && projectId);
 
+  // Etat local qui contient les articles dont on charge les cards, alimenté par la fonction loadArticles
+  const [articles, setArticles] = useState([]);
+
+  // callback à passer à chaque AuthorCard en inverse data flow pour réactualiser la liste après la suppression d'un auteur
+  const handleDeleteArticle = (deletedId) => {
+    setArticles((prev) => prev.filter((a) => a.id !== deletedId));
+  };
+
+  // On va récupérer dans le reducer auteur s'il y a un auteur
+  const selectedAuthor = useSelector((state) => state.author);
+
+  // Fonction callback passée au UseEffect, qui sert à charger tous les articles de la DB quand on arrive sur la page
   const loadArticles = useCallback(async () => {
     if (!isLoggedIn) {
       console.log("User not logged in.");
@@ -22,7 +39,16 @@ export default function DatabaseArticles({ setAuthors }) {
 
     try {
       const backendUrl = process.env.NEXT_PUBLIC_API_BACKEND;
-      const res = await fetch(`${backendUrl}/articles?projectId=${projectId}`, {
+
+      // 📌 Construction de l'URL conditionnelle
+      let url = `${backendUrl}/articles?projectId=${projectId}`;
+
+      // s'il y a un id dans le reducer Author, on restreint la requête à cet auteur là, donc on utilise la route spéciale en backend qui récupère uniquement les articles d'un seul auteur.
+      if (selectedAuthor?.id) {
+        url = `${backendUrl}/authors/${selectedAuthor.id}/articles?projectId=${projectId}`;
+      }
+
+      const res = await fetch(url, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -41,7 +67,7 @@ export default function DatabaseArticles({ setAuthors }) {
     } finally {
       setLoading(false);
     }
-  }, [isLoggedIn, token, projectId]);
+  }, [isLoggedIn, token, projectId, selectedAuthor]);
 
   useEffect(() => {
     loadArticles();
@@ -51,48 +77,19 @@ export default function DatabaseArticles({ setAuthors }) {
     setModal(article);
   }, []);
 
-const getArticleAuthors = async (articleId) => {
-  try {
-    const backendUrl = process.env.NEXT_PUBLIC_API_BACKEND;
+  // Charger l'article dans le reducer au clic dessus
 
-    // 1. Récupère l'article
-    const res = await fetch(
-      `${backendUrl}/articles/${articleId}?projectId=${projectId}`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      }
-    );
-    if (!res.ok) throw new Error(`Erreur article ${res.status}`);
-    const article = await res.json();
+const select = (article) => {
+  dispatch(setSelectedArticleId(article.id));
 
-    // 2. Récupère les IDs d’auteurs
-    const authorIds = article.authors || [];
-    if (!Array.isArray(authorIds) || authorIds.length === 0) {
-      setAuthors([]);
-      return;
-    }
-
-    // 3. Fetch chaque auteur un par un
-    const authorFetches = authorIds.map((authorId) =>
-      fetch(`${backendUrl}/authors/${authorId}?projectId=${projectId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }).then((res) => res.json())
-    );
-
-    const authorData = await Promise.all(authorFetches);
-    const enriched = authorData.map((a) => ({ ...a, isInDb: true }));
-    setAuthors(enriched);
-  } catch (err) {
-    console.error("Erreur chargement auteurs:", err);
+  if (!Array.isArray(article.authors) || article.authors.length === 0) {
+    setAuthors([]);
+    return;
   }
+
+  dispatch(setArticle(article));
 };
 
-  // Tri par complétion
   const incomplete = articles.filter((a) => (a.completionRate || 0) === 0);
   const partial = articles.filter(
     (a) => (a.completionRate || 0) > 0 && (a.completionRate || 0) < 100
@@ -114,7 +111,7 @@ const getArticleAuthors = async (articleId) => {
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-4">
-      <h2 className="text-lg font-semibold mb-4">Articles annotés</h2>
+      <h2 className="text-lg font-semibold mb-4 ml-10">📝 Articles annotés</h2>
 
       {/* Onglets */}
       <div className="flex gap-4 border-b border-gray-200 mb-4">
@@ -167,7 +164,8 @@ const getArticleAuthors = async (articleId) => {
               article={article}
               small={true}
               onViewModal={handleViewModal}
-              onClick={() => getArticleAuthors(article.id)}
+              onClick={() => select(article)}
+              onDelete={handleDeleteArticle}
             />
           ))}
         </div>

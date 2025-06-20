@@ -21,10 +21,14 @@ const statusLabels = {
 };
 
 export default function AuthorViewer() {
+
+  
   const dispatch = useDispatch();
-
+  
   const a = useSelector((s) => s.author);
-
+  
+  console.log("log de isindb depuis authorviewer:"+a.isInDb)
+  
   if (!a || !a.id) {
     return (
       <div className="text-center py-8">

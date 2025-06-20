@@ -1,20 +1,28 @@
 import Head from "next/head";
-import { useDispatch, useSelector } from "react-redux";
+import { useRouter } from "next/router";
+import { useSelector } from "react-redux";
 import { useState, useEffect } from "react";
 import ArticleForm from "./ArticleForm";
 import AuthorCard from "../../components/authors/AuthorCard";
 import ArticleManualMetadata from "./ArticleManualMetadata";
 import ArticleOpenAlexMetadata from "../../components/articles/ArticleOpenAlexMetadata";
-import { setArticle } from "../../reducers/article";
 
 export default function ArticlePage() {
-  const dispatch = useDispatch();
-
   // -- Source mode: 'openalex' ou 'manual'
-  const [sourceMode, setSourceMode] = useState("openalex");
+  const [sourceMode, setSourceMode] = useState("");
+
+  const router = useRouter();
 
   // -- Article chargé depuis Redux
   const articleRedux = useSelector((s) => s.article);
+
+  useEffect(() => {
+    if (articleRedux?.source === "manual") {
+      setSourceMode("manual");
+    } else if (articleRedux?.source === "openalex") {
+      setSourceMode("openalex");
+    } else return;
+  }, [articleRedux?.source]);
 
   return (
     <>
@@ -56,17 +64,18 @@ export default function ArticlePage() {
                 Auteurs
               </h4>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-2">
-                {articleRedux.authorsFullNames.map((name, idx) => (
-                  <div key={idx} className="cursor-pointer">
-                    <AuthorCard
-                      author={{
-                        name,
-                        oaId: articleRedux.authors?.[idx] || "N/A",
-                      }}
-                      small
-                    />
-                  </div>
-                ))}
+                {articleRedux.authorsFullNames.map((display_name, idx) => {
+                  const authorId = articleRedux.authors?.[idx] || `N/A-${idx}`;
+                  return (
+                    <div key={authorId} className="cursor-pointer">
+                      <AuthorCard
+                        author={{ display_name, id: authorId }}
+                        small
+                        onClick={() => router.push(`/Authors?id=${authorId}`)}
+                      />
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
