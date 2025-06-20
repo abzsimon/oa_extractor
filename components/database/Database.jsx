@@ -14,6 +14,7 @@ import {
 import DatabaseAuthors from "./DatabaseAuthors";
 import DatabaseArticles from "./DatabaseArticles";
 import BackupButton from "../BackupButton";
+import ExcelButton from "../ExcelButton";
 import ArticleStatsDashboard from "./ArticleStats";
 import AuthorStatsDashboard from "./AuthorStats";
 import { useDispatch } from "react-redux";
@@ -160,12 +161,35 @@ export default function Database() {
         </div>
       </div>
 
-      {/* Bouton de sauvegarde flottant */}
-      <div className="fixed bottom-8 right-8 z-50">
+      {/* Boutons de sauvegarde et d’export Excel flottants */}
+      <div className="fixed bottom-8 right-8 z-50 flex space-x-4">
+        {/* Backup */}
         <div className="group relative">
           <BackupButton />
-          <div className="absolute bottom-full right-0 mb-2 px-3 py-1 bg-slate-800 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap">
-            Sauvegarder les données
+          <div
+            className="
+      absolute bottom-full right-0 mb-2
+      px-3 py-1 bg-slate-800 text-white text-sm rounded-lg
+      opacity-0 group-hover:opacity-100 transition-opacity duration-200
+      pointer-events-none whitespace-nowrap
+    "
+          >
+            Version Json data on Gitlab
+          </div>
+        </div>
+
+        {/* Excel Export */}
+        <div className="group relative">
+          <ExcelButton />
+          <div
+            className="
+      absolute bottom-full right-0 mb-2
+      px-3 py-1 bg-slate-800 text-white text-sm rounded-lg
+      opacity-0 group-hover:opacity-100 transition-opacity duration-200
+      pointer-events-none whitespace-nowrap
+    "
+          >
+            Download local excel copy
           </div>
         </div>
       </div>
